@@ -357,8 +357,8 @@ export default function WhereNext() {
             </div>
             <h1 className="hero-title">Find where your next life begins.</h1>
             <p className="hero-copy">
-              Describe the life you want. We will find overlooked towns, show you what your money buys,
-              name the employers, and tell you the catch before you fall in love.
+              
+Describe your ideal life. We'll find the towns you've never considered, show you what your budget really buys, explain why people are moving there, and tell you the trade-offs before you pack a box. 
             </p>
 
             <div className="search-panel">
