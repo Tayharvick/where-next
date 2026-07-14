@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { US, STATES, FINDS } from "@/lib/data";
-import { HERO_IMAGE, getTownImage, getTownImageChain, getTownImageFallback, US_FALLBACK_IMAGE } from "@/lib/images";
+import { STATES, FINDS, US } from "@/lib/data";
+import { HERO_IMAGE, getTownImageChain, getTownImageFallback, isModernHeroPhoto, isValidImageUrl, US_FALLBACK_IMAGE } from "@/lib/images";
 import { getTownFactsDisplay } from "@/lib/townFacts";
 
 const KEY = "where-next:v7";
@@ -25,6 +25,9 @@ const C = {
   accent: "#1E4D45",
 };
 
+const REPORT_LABEL = "#5C5C5C";
+const REPORT_BODY = "#2D2D2D";
+
 const DISPLAY = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif";
 const BODY = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif";
 const MONO = "ui-monospace,'SF Mono',Menlo,Consolas,monospace";
@@ -32,19 +35,33 @@ const MONO = "ui-monospace,'SF Mono',Menlo,Consolas,monospace";
 const STAGE = {
   early: {
     c: C.pine,
-    label: "Still early",
+    label: "Still Early",
     blurb: "Cheap because nobody is looking, not because it is broken.",
   },
   heating: {
     c: C.amber,
-    label: "Heating up",
+    label: "Heating Up",
     blurb: "Found. Not finished. There is still a window.",
   },
   late: {
     c: C.rust,
-    label: "Priced in",
+    label: "Already Hot",
     blurb: "The first movers already made their money.",
   },
+};
+
+const SCOUT_STAGE = {
+  early: { c: C.pine, label: "Still Early" },
+  heating: { c: C.amber, label: "Heating Up" },
+  late: { c: C.rust, label: "Last Chance" },
+};
+
+const SCOUT_EDITORIAL = {
+  coolidge: { headline: "Arizona's forgotten boomtown.", cta: "Meet Coolidge →" },
+  johnsoncity: { headline: "The Appalachian town everyone is suddenly searching.", cta: "Why Johnson City? →" },
+  wildwood: { headline: "Florida's fastest-growing secret.", cta: "See why we picked it →" },
+  tontitown: { headline: "An Ozark village the boom finally found.", cta: "Meet Tontitown →" },
+  hoschton: { headline: "When Atlanta's sprawl reaches the village.", cta: "Why Hoschton? →" },
 };
 
 const EXAMPLES = [
@@ -68,7 +85,6 @@ const under = (price, budget) =>
 
 export default function WhereNext() {
   const [tab, setTab] = useState("search");
-  const [lastState, setLastState] = useState("FL");
   const [budget, setBudget] = useState(400000);
   const [wts, setWts] = useState({});
   const [marks, setMarks] = useState({});
@@ -90,8 +106,6 @@ export default function WhereNext() {
         setWts(d.wts || {});
         setMarks(d.marks || {});
         setFound(d.found || {});
-        setSearch(d.search || null);
-        if (d.q) setQ(d.q);
         if (d.budget) setBudget(d.budget);
       }
     } catch {}
@@ -114,7 +128,7 @@ export default function WhereNext() {
     try {
       window.localStorage.setItem(
         KEY,
-        JSON.stringify({ wts, marks, found, search, q, budget, ...next })
+        JSON.stringify({ wts, marks, found, budget, ...next })
       );
     } catch {}
   };
@@ -122,9 +136,8 @@ export default function WhereNext() {
   const ALL_STATES = useMemo(() => ({ ...STATES, ...found }), [found]);
   const isSearch = tab === "search";
   const isFind = tab === "find";
-  const isState = !isSearch && !isFind;
-  const S = isSearch ? search : isState ? ALL_STATES[tab] : null;
-  const key = isSearch ? "__search" : tab;
+  const S = isSearch ? search : null;
+  const key = "__search";
 
   const w = useMemo(() => {
     if (!S) return null;
@@ -150,7 +163,6 @@ export default function WhereNext() {
 
   const go = (t) => {
     setTab(t);
-    if (t !== "find" && t !== "search") setLastState(t);
     setOpen(null);
     setErr("");
   };
@@ -182,16 +194,6 @@ export default function WhereNext() {
       setSearch(data);
       setTab("search");
       setOpen(null);
-      save({ search: data, q });
-    }
-  };
-
-  const researchState = async (abbr) => {
-    const data = await ask({ abbr }, abbr);
-    if (data) {
-      const next = { ...found, [abbr]: data };
-      setFound(next);
-      save({ found: next });
     }
   };
 
@@ -219,8 +221,19 @@ export default function WhereNext() {
     return [...fromStates, ...fromSearch, ...FINDS.map((f) => ({ ...f, st: "" }))];
   }, [ALL_STATES, search]);
 
+  const hiddenFinds = useMemo(() => FINDS.map((f) => ({ ...f, st: "" })), []);
+
+  const hiddenFindsFlat = useMemo(
+    () => ["early", "heating", "late"].flatMap((s) => hiddenFinds.filter((t) => t.stage === s)),
+    [hiddenFinds]
+  );
+
+  const scoutPub = useMemo(() => getScoutPublication(), []);
+  const featuredFind = hiddenFindsFlat[0] || null;
+  const restFinds = hiddenFindsFlat.slice(1);
+  const openFind = hiddenFindsFlat.find((t) => open === t.id + t.st) || null;
+
   const shortlist = everyTown.filter((t) => marks[t.id] === "yes");
-  const doneCount = Object.keys(ALL_STATES).length;
 
   if (!ready) return <div style={{ background: C.ink, minHeight: "100vh" }} />;
 
@@ -273,16 +286,79 @@ export default function WhereNext() {
         input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:999px;background:${C.rule}}
         input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:${C.ink};cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
         .town-card{background:${C.card};border:1px solid ${C.rule};border-radius:20px;overflow:hidden;margin-bottom:28px;box-shadow:0 2px 8px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.04);transition:transform .25s ease,box-shadow .25s ease}
+        .town-card-open{box-shadow:0 4px 16px rgba(0,0,0,.06),0 20px 48px rgba(0,0,0,.1)}
         .town-card:hover{transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,0,0,.06),0 16px 40px rgba(0,0,0,.08)}
+        .town-card-open:hover{transform:none}
         .town-visual{position:relative;min-height:340px;background-color:#2a2a2a;display:flex;align-items:flex-end;overflow:hidden;transition:transform .4s ease}
+        .town-visual-detail{min-height:min(72vh,560px);align-items:flex-end}
         .town-visual-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0}
         .town-card:hover .town-visual{transform:scale(1.01)}
         .town-visual-wrap{overflow:hidden}
         .town-visual:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.72) 100%)}
         .town-overlay{position:relative;z-index:1;width:100%;padding:32px 34px;color:#fff}
+        .town-overlay-detail{padding:40px 40px 44px}
         .rank{font-family:${MONO};font-size:11px;color:rgba(255,255,255,.6);margin-bottom:8px;letter-spacing:.1em}
         .town-name{font-family:${DISPLAY};font-size:clamp(36px,5.5vw,60px);letter-spacing:-.04em;line-height:1;font-weight:600;margin:0}
+        .town-name-detail{font-size:clamp(42px,6vw,72px)}
         .town-sub{margin-top:10px;color:rgba(255,255,255,.72);font-size:14px;font-weight:400}
+        .town-hero-summary{margin:18px 0 0;font-family:${DISPLAY};font-size:clamp(18px,2.5vw,24px);line-height:1.45;font-weight:500;letter-spacing:-.02em;max-width:720px;color:rgba(255,255,255,.92)}
+        .hero-actions{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
+        .hero-btn{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;backdrop-filter:blur(10px);transition:background .2s,border-color .2s}
+        .hero-btn:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.55)}
+        .hero-btn[data-on="1"]{background:#fff;border-color:#fff;color:${C.ink}}
+        .detail-collapse{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:${C.soft};font-size:14px;font-weight:500;cursor:pointer;padding:0;margin-bottom:8px}
+        .detail-collapse:hover{color:${C.text}}
+        .town-detail{padding:48px 48px 56px;color:${REPORT_BODY}}
+        .town-detail .section-label{color:${REPORT_LABEL};font-weight:600;letter-spacing:.16em;margin-bottom:14px}
+        .town-detail .body-copy{color:${REPORT_BODY};font-size:16px;line-height:1.75}
+        .town-detail .article-lede{color:${REPORT_BODY}}
+        .town-detail .bullets li{color:${REPORT_BODY}}
+        .town-detail .report-close-copy{color:${REPORT_BODY}}
+        .scout-verdict{display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:44px;margin-bottom:44px;border-bottom:1px solid ${C.rule}}
+        .scout-verdict-label{font-family:${MONO};font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${REPORT_LABEL};margin-bottom:16px;font-weight:600}
+        .scout-verdict-copy{font-family:${DISPLAY};font-size:clamp(21px,2.8vw,27px);line-height:1.55;letter-spacing:-.025em;margin:0;font-weight:500;color:${C.ink};max-width:720px}
+        .scout-score-block{flex-shrink:0;text-align:left;min-width:248px;max-width:280px;padding:24px 28px;border:1px solid ${C.rule};border-radius:16px;background:${C.cream}}
+        .scout-score-header{text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid ${C.rule}}
+        .scout-score-label{font-family:${MONO};font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${REPORT_LABEL};font-weight:600}
+        .scout-score-num{font-family:${DISPLAY};font-size:48px;line-height:1;font-weight:600;letter-spacing:-.04em;color:${C.ink};margin:10px 0 6px}
+        .scout-score-rating{font-family:${DISPLAY};font-size:14px;line-height:1.35;font-weight:500;color:${REPORT_BODY};margin:0 0 4px}
+        .scout-score-out{font-family:${MONO};font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:${REPORT_LABEL}}
+        .scout-score-breakdown{display:flex;flex-direction:column;gap:14px}
+        .scout-score-row-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+        .scout-score-row-label{font-family:${BODY};font-size:11px;line-height:1.3;color:${REPORT_LABEL};font-weight:500}
+        .scout-score-row-val{font-family:${MONO};font-size:11px;color:${C.ink};font-weight:600;flex-shrink:0}
+        .scout-score-bar{height:3px;background:${C.rule};border-radius:2px;overflow:hidden}
+        .scout-score-bar-fill{height:100%;background:${C.ink};border-radius:2px;opacity:.82}
+        .scout-score-prov{font-family:${MONO};font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:${REPORT_LABEL};margin-top:5px;display:block}
+        .scout-score-how{margin-top:18px;padding-top:14px;border-top:1px solid ${C.rule}}
+        .scout-score-how summary{font-family:${MONO};font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:${REPORT_LABEL};cursor:pointer;list-style:none;font-weight:600}
+        .scout-score-how summary::-webkit-details-marker{display:none}
+        .scout-score-how p{font-size:11px;line-height:1.6;color:${REPORT_LABEL};margin:10px 0 0}
+        .facts-strip{display:flex;flex-wrap:wrap;gap:0;margin-bottom:52px;border-top:1px solid ${C.rule};border-bottom:1px solid ${C.rule}}
+        .facts-strip-item{flex:1 1 140px;padding:26px 32px 26px 0;border-right:1px solid ${C.rule};min-width:120px}
+        .facts-strip-item:last-child{border-right:0;padding-right:0}
+        .facts-strip-label{font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${REPORT_LABEL};margin-bottom:10px;font-weight:600}
+        .facts-strip-value{font-family:${DISPLAY};font-size:22px;line-height:1.15;font-weight:600;letter-spacing:-.025em;color:${C.ink}}
+        .fit-editorial{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-bottom:56px;padding-bottom:56px;border-bottom:1px solid ${C.rule}}
+        .fit-editorial-col-label{font-family:${MONO};font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${REPORT_LABEL};margin-bottom:16px;font-weight:600;padding-bottom:12px;border-bottom:1px solid ${C.rule}}
+        .fit-editorial-col-label-warn{color:${REPORT_LABEL}}
+        .fit-editorial .bullets li{font-size:16px;line-height:1.75;margin-bottom:12px;color:${REPORT_BODY}}
+        .fit-summary{display:grid;grid-template-columns:1fr 1fr;gap:28px;background:${C.cream};border:1px solid ${C.rule};border-radius:16px;padding:28px 30px;margin-bottom:40px}
+        .fit-col-label{font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};margin-bottom:12px;font-weight:600}
+        .fit-col-label-skip{color:${C.rust}}
+        .article-section{border-top:1px solid ${C.rule};padding-top:56px;margin-top:56px}
+        .article-section:first-of-type{border-top:0;padding-top:0;margin-top:0}
+        .article-heading{font-family:${DISPLAY};font-size:clamp(26px,3vw,34px);line-height:1.15;letter-spacing:-.03em;margin:0 0 16px;font-weight:600;color:${C.ink}}
+        .article-lede{font-family:${DISPLAY};font-size:20px;line-height:1.55;margin:0;font-weight:500;letter-spacing:-.02em;color:${C.ink}}
+        .report-close{background:${C.cream};border:1px solid ${C.rule};border-radius:16px;padding:36px 40px;margin-top:56px}
+        .report-close-copy{font-size:16px;line-height:1.8;color:${REPORT_BODY};margin:16px 0 0}
+        .detail-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:40px}
+        .similar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:18px}
+        .similar-card{border:1px solid ${C.rule};background:${C.paper};border-radius:14px;padding:18px 20px;text-align:left;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .2s}
+        .similar-card:hover{border-color:${C.faint};box-shadow:0 4px 16px rgba(0,0,0,.06);transform:translateY(-2px)}
+        .similar-name{font-family:${DISPLAY};font-size:20px;font-weight:600;letter-spacing:-.02em;margin:0 0 6px}
+        .similar-hook{font-size:13px;line-height:1.55;color:${C.soft};margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .similar-meta{font-family:${MONO};font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:${C.faint}}
         .stage-pill{position:absolute;z-index:2;top:20px;right:20px;border-radius:999px;color:#fff;padding:7px 14px;font-family:${MONO};font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,.15)}
         .fit-ring{position:absolute;z-index:2;right:24px;bottom:24px;width:88px;height:88px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(12px)}
         .fit-num{font-family:${DISPLAY};font-size:28px;line-height:1;font-weight:600}
@@ -317,12 +393,47 @@ export default function WhereNext() {
         .chip[data-on="1"]{background:${C.ink};border-color:${C.ink};color:#fff}
         .listing-link{display:inline-block;background:${C.ink};color:#fff;text-decoration:none;border-radius:10px;padding:11px 16px;font-size:13px;font-weight:500;transition:background .2s}
         .listing-link:hover{background:${C.charcoal}}
-        .state-grid{display:flex;flex-wrap:wrap;gap:6px;margin:24px 0}
-        .state-button{width:44px;height:36px;border-radius:8px;background:transparent;font-family:${MONO};font-size:11px;cursor:pointer;transition:background .2s,border-color .2s}
-        .unmapped{background:${C.paper};border:1px solid ${C.rule};border-radius:20px;padding:48px 32px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04)}
         .shortlist{margin-top:36px;background:${C.ink};color:#fff;border-radius:20px;padding:26px 28px}
         .shortlist-items{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
         .shortlist-pill{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:8px 14px;font-size:13px}
+        .find-badge{display:inline-block;border:1px solid ${C.rule};background:${C.cream};color:${C.soft};border-radius:999px;padding:5px 12px;font-family:${MONO};font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-bottom:12px}
+        .scout-masthead{text-align:center;padding:64px 0 56px}
+        .scout-masthead-rule{height:1px;background:${C.rule};max-width:100px;margin:0 auto}
+        .scout-masthead-brand{font-family:${DISPLAY};font-size:clamp(36px,5.5vw,60px);letter-spacing:-.04em;font-weight:600;margin:32px 0 16px;line-height:1.05}
+        .scout-masthead-tagline{color:${C.soft};font-size:18px;line-height:1.55;max-width:480px;margin:0 auto 24px;font-weight:400;letter-spacing:-.01em}
+        .scout-masthead-meta{font-family:${MONO};font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:${C.faint}}
+        .scout-masthead-dot{margin:0 12px;color:${C.rule}}
+        .scout-label{font-family:${MONO};font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:${C.faint};font-weight:500;margin-bottom:20px}
+        .scout-section-label{font-family:${MONO};font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:${C.faint};font-weight:500;text-align:center;margin:64px 0 32px;padding-top:56px;border-top:1px solid ${C.rule}}
+        .scout-cover{display:block;width:100%;border:0;background:transparent;padding:0;margin:0 0 64px;cursor:pointer;text-align:left}
+        .scout-cover-bleed{position:relative;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);min-height:min(76vh,680px);overflow:hidden;background:#1a1a1a}
+        .scout-cover-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;transition:transform .8s ease}
+        .scout-cover:hover .scout-cover-img{transform:scale(1.02)}
+        .scout-cover-gradient{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.08) 0%,rgba(0,0,0,.35) 45%,rgba(0,0,0,.82) 100%)}
+        .scout-cover-body{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:flex-end;padding:56px max(28px,calc((100vw - 1180px)/2 + 28px)) 64px;color:#fff}
+        .scout-kicker{font-family:${MONO};font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:20px}
+        .scout-stage-pill{display:inline-block;align-self:flex-start;border-radius:999px;color:#fff;padding:8px 15px;font-family:${MONO};font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin-bottom:22px}
+        .scout-stage-pill-sm{padding:6px 11px;font-size:8px;margin-bottom:0;letter-spacing:.12em}
+        .scout-cover-headline{font-family:${DISPLAY};font-size:clamp(36px,5.5vw,64px);letter-spacing:-.04em;line-height:1.08;margin:0;font-weight:600;max-width:820px;text-wrap:balance}
+        .scout-cover-byline{margin-top:18px;font-family:${MONO};font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+        .scout-cover-deck{margin:20px 0 0;font-size:clamp(17px,2.2vw,21px);line-height:1.55;font-weight:400;letter-spacing:-.01em;max-width:640px;color:rgba(255,255,255,.82)}
+        .scout-cover-cta{margin-top:32px;font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);transition:color .2s}
+        .scout-cover:hover .scout-cover-cta{color:rgba(255,255,255,.85)}
+        .scout-pick{margin:0 0 72px;padding:48px 0;border-top:1px solid ${C.rule};border-bottom:1px solid ${C.rule}}
+        .scout-pick-list{list-style:none;padding:0;margin:0}
+        .scout-pick-list li{display:flex;gap:14px;font-size:16px;line-height:1.7;color:${C.text};margin-bottom:16px}
+        .scout-pick-list li:last-child{margin-bottom:0}
+        .scout-pick-list li span:first-child{color:${C.faint};flex-shrink:0}
+        .scout-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:36px;margin-bottom:80px}
+        .scout-card{display:flex;flex-direction:column;border:0;background:transparent;padding:0;cursor:pointer;text-align:left}
+        .scout-card-visual{position:relative;aspect-ratio:4/3;border-radius:18px;overflow:hidden;background:#1a1a1a;margin-bottom:22px;box-shadow:0 2px 16px rgba(0,0,0,.06);transition:box-shadow .35s ease,transform .35s ease}
+        .scout-card:hover .scout-card-visual{box-shadow:0 12px 36px rgba(0,0,0,.1);transform:translateY(-4px)}
+        .scout-card-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .6s ease}
+        .scout-card:hover .scout-card-img{transform:scale(1.04)}
+        .scout-card-visual .scout-stage-pill{position:absolute;top:16px;left:16px;z-index:1}
+        .scout-card-name{font-family:${DISPLAY};font-size:28px;letter-spacing:-.03em;margin:0 0 8px;font-weight:600;line-height:1.12}
+        .scout-card-state{font-family:${MONO};font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};margin-bottom:12px}
+        .scout-card-teaser{font-size:15px;line-height:1.65;color:${C.soft};margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
         .footer-card{margin-top:40px;background:${C.ink};color:#fff;border-radius:20px;padding:32px}
         .footer-list{list-style:none;padding:0;margin:16px 0 0}
         .footer-list li{display:flex;gap:14px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:12px;font-size:15px}
@@ -340,9 +451,19 @@ export default function WhereNext() {
           .town-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
           .fit-ring{width:76px;height:76px;right:18px;bottom:18px}
           .town-overlay{padding:24px 20px}
+          .town-overlay-detail{padding:28px 20px 32px}
+          .town-detail{padding:28px 20px 36px}
+          .scout-verdict{flex-direction:column;gap:24px}
+          .fit-editorial{grid-template-columns:1fr;gap:36px}
+          .facts-strip-item{flex:1 1 100%;border-right:0;border-bottom:1px solid ${C.rule};padding:16px 0}
+          .facts-strip-item:last-child{border-bottom:0}
+          .fit-summary{grid-template-columns:1fr}
+          .similar-grid{grid-template-columns:1fr}
+          .scout-cover-body{padding:32px 20px 40px}
+          .scout-grid{grid-template-columns:1fr}
+          .scout-masthead{padding:40px 0 32px}
           .town-summary,.expanded{padding-left:20px;padding-right:20px}
           .budget-row{flex-wrap:wrap}
-          .count{display:none}
         }
       `}</style>
 
@@ -352,7 +473,6 @@ export default function WhereNext() {
             <div className="brand">Where Next</div>
             <div className="nav-links">
               <button className="nav-link" data-on={isSearch ? "1" : "0"} onClick={() => go("search")}>Discover</button>
-              <button className="nav-link" data-on={isState ? "1" : "0"} onClick={() => go(lastState)}>Explore states</button>
               <button className="nav-link" data-on={isFind ? "1" : "0"} onClick={() => go("find")}>Hidden finds</button>
             </div>
           </nav>
@@ -371,7 +491,15 @@ export default function WhereNext() {
               <input
                 className="search-input"
                 value={q}
-                onChange={(e) => setQ(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setQ(value);
+                  if (!value.trim()) {
+                    setSearch(null);
+                    setOpen(null);
+                    setTuning(false);
+                  }
+                }}
                 onKeyDown={(e) => e.key === "Enter" && !busy && runSearch()}
                 placeholder="Mountains, lakes, small town, under $400k..."
               />
@@ -402,9 +530,7 @@ export default function WhereNext() {
       <main className="page content">
         <div className="toolbar">
           <button className="tab" data-on={isSearch ? "1" : "0"} onClick={() => go("search")}>Your search</button>
-          <button className="tab" data-on={isState ? "1" : "0"} onClick={() => go(lastState)}>By state</button>
-          <button className="tab" data-on={isFind ? "1" : "0"} onClick={() => go("find")}>Never heard of it</button>
-          <span className="count">{doneCount}/50 states researched</span>
+          <button className="tab" data-on={isFind ? "1" : "0"} onClick={() => go("find")}>Hidden Finds</button>
         </div>
 
         {isSearch && !search && !busy && (
@@ -419,46 +545,7 @@ export default function WhereNext() {
           </div>
         )}
 
-        {isState && (
-          <div className="state-grid">
-            {Object.keys(US).map((k) => {
-              const done = !!ALL_STATES[k];
-              const on = tab === k;
-              return (
-                <button
-                  key={k}
-                  className="state-button"
-                  onClick={() => go(k)}
-                  title={US[k]}
-                  style={{
-                    border: `1px solid ${on ? C.ink : done ? C.pine : C.rule}`,
-                    background: on ? C.ink : done ? "rgba(30,77,69,.06)" : C.paper,
-                    color: on ? "#fff" : done ? C.pine : C.faint,
-                    fontWeight: done ? 600 : 400,
-                  }}
-                >
-                  {k}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {isState && !S && (
-          <div className="unmapped">
-            <div className="eyebrow">Unmapped state</div>
-            <h2 className="intro-title" style={{ fontSize: 44, marginTop: 12 }}>{US[tab]}</h2>
-            <p className="intro-copy" style={{ margin: "14px auto 24px", maxWidth: 560 }}>
-              Nobody has asked for it yet. Send the scout out and it will research prices, employers,
-              carrying costs, and the honest reasons not to move there.
-            </p>
-            <button className="search-button" disabled={!!busy} onClick={() => researchState(tab)}>
-              {busy === tab ? `Researching ${US[tab]}...` : `Research ${US[tab]}`}
-            </button>
-          </div>
-        )}
-
-        {S && (
+        {isSearch && S && (
           <>
             <div className="intro">
               <div>
@@ -505,56 +592,86 @@ export default function WhereNext() {
               <Card
                 key={t.id}
                 t={t}
-                st={isState ? tab : ""}
+                st=""
+                townKey={t.id}
+                peerTowns={ranked}
                 rank={i + 1}
                 score={t.score}
+                loadDelay={i * 600}
                 open={open === t.id}
                 toggle={() => setOpen(open === t.id ? null : t.id)}
+                onNavigate={(key) => setOpen(key)}
                 mark={mark}
                 marks={marks}
                 budget={budget}
               />
             ))}
 
-            <Footer notes={S.footer} live={isSearch || !!found[tab]} label={isSearch ? "This search" : US[tab]} data={S} />
+            <Footer notes={S.footer} live label="This search" data={S} />
           </>
         )}
 
         {isFind && (
           <>
-            <div className="intro">
-              <div>
-                <div className="eyebrow">Discovery timing</div>
-                <h2 className="intro-title" style={{ marginTop: 12 }}>
-                  The difference between a find and a mistake is usually timing.
-                </h2>
-              </div>
-            </div>
+            <ScoutMasthead weekLabel={scoutPub.weekLabel} issue={scoutPub.issue} />
 
-            {["early", "heating", "late"].map((s) => {
-              const rows = everyTown.filter((t) => t.stage === s);
-              if (!rows.length) return null;
-              return (
-                <section key={s} style={{ marginBottom: 42 }}>
-                  <div style={{ borderTop: `3px solid ${STAGE[s].c}`, paddingTop: 14, marginBottom: 20 }}>
-                    <h3 style={{ fontFamily: DISPLAY, fontSize: 30, margin: 0, color: STAGE[s].c, fontWeight: 600, letterSpacing: "-.02em" }}>{STAGE[s].label}</h3>
-                    <p style={{ color: C.soft, margin: "6px 0 0", fontSize: 15 }}>{STAGE[s].blurb}</p>
-                  </div>
-                  {rows.map((t) => (
-                    <Card
-                      key={t.id + t.st}
-                      t={t}
-                      st={t.st}
-                      open={open === t.id + t.st}
-                      toggle={() => setOpen(open === t.id + t.st ? null : t.id + t.st)}
-                      mark={mark}
-                      marks={marks}
-                      budget={budget}
-                    />
-                  ))}
-                </section>
-              );
-            })}
+            {!hiddenFinds.length ? (
+              <p className="intro-copy">No hidden finds are available yet.</p>
+            ) : openFind ? (
+              <Card
+                key={openFind.id + openFind.st}
+                t={openFind}
+                st={openFind.st}
+                townKey={openFind.id + openFind.st}
+                peerTowns={hiddenFindsFlat}
+                open
+                toggle={() => setOpen(null)}
+                onNavigate={(key) => setOpen(key)}
+                mark={mark}
+                marks={marks}
+                budget={budget}
+                findBadge={hiddenFindBadge(openFind)}
+              />
+            ) : (
+              <>
+                <ScoutCoverStory
+                  town={featuredFind}
+                  st={featuredFind.st}
+                  onOpen={() => setOpen(featuredFind.id + featuredFind.st)}
+                />
+
+                {featuredFind.why?.length > 0 && (
+                  <section className="scout-pick">
+                    <div className="scout-label">Why it&apos;s this week&apos;s pick</div>
+                    <ul className="scout-pick-list">
+                      {featuredFind.why.slice(0, 5).map((item, i) => (
+                        <li key={i}>
+                          <span>—</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                {restFinds.length > 0 && (
+                  <>
+                    <div className="scout-section-label">Also This Week</div>
+                    <div className="scout-grid">
+                      {restFinds.map((t, i) => (
+                        <ScoutEditorialCard
+                          key={t.id + t.st}
+                          town={t}
+                          st={t.st}
+                          loadDelay={(i + 1) * 400}
+                          onOpen={() => setOpen(t.id + t.st)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </>
         )}
 
@@ -600,17 +717,49 @@ function Icon({ name }) {
 }
 
 function TownFacts({ t }) {
-  const rows = getTownFactsDisplay(t);
+  const rows = getTownFactsDisplay(t).filter((row) => !row.pending);
+  if (!rows.length) return null;
   return (
     <div className="town-facts">
-      {rows.map(({ key, label, icon, value, pending }) => (
+      {rows.map(({ key, label, icon, value }) => (
         <div key={key} className="fact-item">
           <div className="fact-head">
             <span className="fact-icon"><Icon name={icon} /></span>
             <span className="fact-label">{label}</span>
           </div>
-          <div className="fact-value" data-pending={pending ? "1" : "0"}>
-            {value}
+          <div className="fact-value">{value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TownFactsStrip({ t, stage, over }) {
+  const rows = getTownFactsDisplay(t).filter((row) => !row.pending);
+  const items = [];
+
+  if (t.priceLabel) {
+    items.push({ key: "price", label: "Typical home", value: t.priceLabel, color: over ? C.rust : C.text });
+  }
+  if (t.delta) {
+    items.push({ key: "delta", label: "Market direction", value: t.delta });
+  }
+  if (stage?.label) {
+    items.push({ key: "stage", label: "Discovery stage", value: stage.label, color: stage.c });
+  }
+  for (const row of rows) {
+    items.push({ key: row.key, label: row.label, value: row.value });
+  }
+
+  if (!items.length) return null;
+
+  return (
+    <div className="facts-strip">
+      {items.map((item) => (
+        <div key={item.key} className="facts-strip-item">
+          <div className="facts-strip-label">{item.label}</div>
+          <div className="facts-strip-value" style={item.color ? { color: item.color } : undefined}>
+            {item.value}
           </div>
         </div>
       ))}
@@ -618,16 +767,466 @@ function TownFacts({ t }) {
   );
 }
 
-function TownVisual({ town, stateAbbr, stage, rank, score }) {
-  const [src, setSrc] = useState(() => getTownImage(town, stateAbbr));
+function scoutClamp(n, lo = 0, hi = 100) {
+  return Math.max(lo, Math.min(hi, Math.round(n)));
+}
+
+function parseTownPrice(t) {
+  if (Number.isFinite(t.price) && t.price > 0) return t.price;
+  const m = (t.priceLabel || "").replace(/[,~]/g, "").match(/\$?\s*([\d.]+)\s*k/i);
+  if (m) return parseFloat(m[1]) * 1000;
+  return null;
+}
+
+function townTextBlob(t) {
+  return [
+    t.jobs, t.get, t.cost, t.hook, t.never, t.history,
+    ...(t.why || []), ...(t.watch || []),
+  ].join(" ").toLowerCase();
+}
+
+function scoreJobMarket(t) {
+  if (Number.isFinite(t.scores?.jobs)) {
+    return { score: scoutClamp((t.scores.jobs / 5) * 100), provisional: false };
+  }
+  const j = (t.jobs || "").toLowerCase();
+  if (!j) return { score: 55, provisional: true };
+
+  let score = 55;
+  if (/semiconductor|manufacturing|aerospace|defense|health|university|diversified|strongest|hq|walmart|tyson|hunt|space|anchor|employer/.test(j)) score += 20;
+  if (/spillover|corridor|ecosystem|steady|refill|private space/.test(j)) score += 10;
+  if (/thin|one-industry|tourism only|hospitality only|remote-work|forty minutes up the road/.test(j)) score -= 15;
+  if (/construction.*retail|serving the retirement|almost all of it serving/.test(j)) score -= 10;
+
+  return { score: scoutClamp(score), provisional: true };
+}
+
+function scoreHousingAffordability(t, budget = 400000) {
+  const price = parseTownPrice(t);
+  const blob = townTextBlob(t);
+  let provisional = !price;
+  let score = 60;
+
+  if (price) {
+    const ratio = price / budget;
+    if (ratio <= 0.65) score = 92;
+    else if (ratio <= 0.75) score = 85;
+    else if (ratio <= 0.85) score = 78;
+    else if (ratio <= 1.0) score = 68;
+    else if (ratio <= 1.15) score = 55;
+    else score = 42;
+    provisional = false;
+  }
+
+  const delta = t.delta || "";
+  if (/[−-]\d/.test(delta)) score += 8;
+  const upMatch = delta.match(/\+([\d.]+)/);
+  if (upMatch && parseFloat(upMatch[1]) > 7) score -= 10;
+  if (/cheap|afford|below.*median|under the national|growth on sale|discount|20% under/.test(blob)) score += 6;
+  if (/priced|closing|expensive|priciest|cheapest window is closing/.test(blob)) score -= 12;
+
+  return { score: scoutClamp(score), provisional };
+}
+
+function scoreGrowthPotential(t) {
+  const stageBase = { early: 82, heating: 68, late: 48 };
+  let score = stageBase[t.stage] || 65;
+  const blob = townTextBlob(t);
+  let provisional = !t.why?.length && !t.hook;
+
+  if (/doubled|fastest-growing|jumped from|grew \d+%|net migration|approach 80,000|population.*between/.test(blob)) score += 10;
+  if (/ranked.*relocation|most-searched|still a window|expanding straight/.test(blob)) score += 6;
+  if (/closing|priced out|listings up|already hot|first movers|discount is closing/.test(blob)) score -= 12;
+
+  const delta = t.delta || "";
+  const upMatch = delta.match(/\+([\d.]+)/);
+  if (upMatch) {
+    const pct = parseFloat(upMatch[1]);
+    if (pct > 8) score -= 8;
+    else if (pct > 0) score += 4;
+  }
+  if (/[−-]\d/.test(delta)) score += 6;
+
+  return { score: scoutClamp(score), provisional };
+}
+
+function scoreCostOfLiving(t) {
+  const blob = townTextBlob(t);
+  const cost = (t.cost || "").toLowerCase();
+  const hasSignal = cost || /below national|no state income tax|cheaper insurance|under the national|nearer \$5,500/.test(blob);
+
+  if (!hasSignal) return { score: 58, provisional: true };
+
+  let score = 62;
+  if (/no state income tax|below national|under the national|cheaper insurance|inland.*cheaper|nearer \$5,500|part of the draw/.test(blob)) score += 18;
+  if (/budget high|premium|8,460|11,000|dearer|expensive|rules apply|show up in your premium/.test(blob)) score -= 12;
+
+  return { score: scoutClamp(score), provisional: !cost };
+}
+
+function scoreLifestyleAmenities(t) {
+  const scores = t.scores || {};
+  const lifestyleKeys = Object.keys(scores).filter((k) => k !== "jobs" && k !== "risk");
+  if (lifestyleKeys.length > 0) {
+    const avg = lifestyleKeys.reduce((s, k) => s + num(scores[k]), 0) / lifestyleKeys.length;
+    return { score: scoutClamp((avg / 5) * 100), provisional: false };
+  }
+
+  const walk = t.facts?.walkability;
+  if (walk) {
+    const w = walk.toLowerCase();
+    const score = w.includes("walkable") ? 78 : w.includes("mixed") ? 62 : 45;
+    return { score: scoutClamp(score), provisional: false };
+  }
+
+  const blob = townTextBlob(t);
+  let score = 55;
+  if (/walkable|main street|university town|appalachian|ozark|beach|mountain|college|grape festival|real main street|things to do/.test(blob)) score += 15;
+  if (/drive through|crossroads|exit sign|nothing else|retirement development|strain everything/.test(blob)) score -= 10;
+
+  return { score: scoutClamp(score), provisional: true };
+}
+
+function scoreClimate(t) {
+  const watch = (t.watch || []).join(" ").toLowerCase();
+  const cost = (t.cost || "").toLowerCase();
+  const weather = (t.facts?.weather || "").toLowerCase();
+  const climateText = `${watch} ${cost} ${weather}`;
+
+  if (!/(heat|113|humid|wildfire|hurricane|flood|storm|climate|weather|insurance)/.test(climateText)) {
+    return { score: 62, provisional: true };
+  }
+
+  let score = 72;
+  const hazards = climateText.match(/heat|113|wildfire|hurricane|flood|humid/g);
+  if (hazards) score -= Math.min(28, hazards.length * 8);
+  if (/heat|wildfire/.test(cost)) score -= 10;
+  if (/mild|four seasons|foothill/.test(climateText)) score += 10;
+
+  return { score: scoutClamp(score), provisional: !weather && !/(heat|wildfire|hurricane|113|humid)/.test(watch + cost) };
+}
+
+function scoreRisk(t) {
+  const watch = t.watch || [];
+  if (watch.length === 0) return { score: 65, provisional: true };
+
+  let score = 78;
+  score -= watch.length * 8;
+  const blob = watch.join(" ").toLowerCase();
+  if (/157%|major|doubling.*strains|one-industry|insurance|too few sales|closing while you read/.test(blob)) score -= 10;
+  if (t.stage === "late") score -= 12;
+  if (t.verified === false) score -= 8;
+
+  return { score: scoutClamp(score), provisional: true };
+}
+
+function scoutRatingLabel(overall) {
+  if (overall >= 90) return "Exceptional Opportunity";
+  if (overall >= 80) return "Buy Early";
+  if (overall >= 70) return "Worth Watching";
+  if (overall >= 60) return "Mixed Outlook";
+  return "Proceed Carefully";
+}
+
+function buildScoutScorecard(t, budget = 400000) {
+  const categories = [
+    { id: "jobs", label: "Job Market", weight: 0.2, ...scoreJobMarket(t) },
+    { id: "housing", label: "Housing Affordability", weight: 0.2, ...scoreHousingAffordability(t, budget) },
+    { id: "growth", label: "Growth Potential", weight: 0.15, ...scoreGrowthPotential(t) },
+    { id: "cost", label: "Cost of Living", weight: 0.15, ...scoreCostOfLiving(t) },
+    { id: "lifestyle", label: "Lifestyle & Amenities", weight: 0.1, ...scoreLifestyleAmenities(t) },
+    { id: "climate", label: "Climate", weight: 0.1, ...scoreClimate(t) },
+    { id: "risk", label: "Risk", weight: 0.1, ...scoreRisk(t) },
+  ];
+
+  const overall = scoutClamp(categories.reduce((sum, c) => sum + c.score * c.weight, 0));
+
+  return { overall, rating: scoutRatingLabel(overall), categories };
+}
+
+function ScoutScorecard({ t, budget }) {
+  const card = useMemo(() => buildScoutScorecard(t, budget), [t, budget]);
+
+  return (
+    <div className="scout-score-block">
+      <div className="scout-score-header">
+        <div className="scout-score-label">Scout Score</div>
+        <div className="scout-score-num">{card.overall}</div>
+        <div className="scout-score-rating">{card.rating}</div>
+        <div className="scout-score-out">Out of 100</div>
+      </div>
+
+      <div className="scout-score-breakdown">
+        {card.categories.map((c) => (
+          <div key={c.id} className="scout-score-row">
+            <div className="scout-score-row-head">
+              <span className="scout-score-row-label">{c.label}</span>
+              <span className="scout-score-row-val">{c.score}</span>
+            </div>
+            <div className="scout-score-bar">
+              <div className="scout-score-bar-fill" style={{ width: `${c.score}%` }} />
+            </div>
+            {c.provisional && <span className="scout-score-prov">Provisional</span>}
+          </div>
+        ))}
+      </div>
+
+      <details className="scout-score-how">
+        <summary>How we score</summary>
+        <p>
+          Scout Score measures relocation potential using jobs, housing, growth, cost of living, lifestyle,
+          climate, and local risks. The score is intended to explain opportunity and trade-offs, not simply
+          rank popularity.
+        </p>
+      </details>
+    </div>
+  );
+}
+
+function lowerFirst(s) {
+  if (!s) return "";
+  return s.charAt(0).toLowerCase() + s.slice(1);
+}
+
+function scoutVerdictText(t, stage) {
+  const n = t.name;
+
+  const line1 = (() => {
+    const affordWhy = (t.why || []).find((w) => /cheap|afford|below|under|last|sale|rare|overlook|quietly|forgotten/i.test(w));
+    if (affordWhy) {
+      const clause = affordWhy.replace(/\.$/, "");
+      return `${n} is ${lowerFirst(clause)}.`;
+    }
+    if (t.get) {
+      return `${n} is the kind of place where ${lowerFirst(t.get.replace(/\.$/, ""))}.`;
+    }
+    if (t.never) {
+      const clause = t.never.split(".")[0];
+      return `${n} is still under the radar — ${lowerFirst(clause)}.`;
+    }
+    return t.hook;
+  })();
+
+  const blob = [t.jobs, t.get, ...(t.why || []), ...(t.watch || [])].join(" ");
+  const buyFor = /semiconductor|manufacturing|job|growth|momentum|university|appreciation|population|doubled|grew/i.test(blob)
+    ? "long-term appreciation"
+    : "the underlying thesis";
+
+  const notFor = (() => {
+    const w = t.watch?.[0] || "";
+    if (/heat|climate|wildfire|113|humid/i.test(w)) return "climate comfort";
+    if (/commute|drive|hour|car/i.test(w)) return "a painless commute";
+    if (/priced|late|26\.|9\.7|closing|expensive/i.test(w) || t.stage === "late") return "chasing a bargain";
+    if (/job|industry|thin|health|one-industry/i.test(w)) return "career optionality";
+    if (t.cost) return lowerFirst(t.cost.replace(/\.$/, "").split(".")[0]);
+    return "picture-postcard living";
+  })();
+
+  let line2;
+  if (t.stage === "late") {
+    const caveat = t.watch?.[0] || stage.blurb;
+    line2 = `We would only recommend ${n} if you understand the tradeoffs — ${lowerFirst(caveat.replace(/\.$/, ""))}.`;
+  } else if (t.stage === "early") {
+    line2 = `We would buy here for ${buyFor}, not ${notFor}.`;
+  } else {
+    line2 = `We would move with intent — ${buyFor} still wins, if you can live with ${notFor}.`;
+  }
+
+  return `${line1} ${line2}`;
+}
+
+function wouldWeMoveSummary(t, stage) {
+  const lead = t.why?.[0] || t.hook;
+  const caveat = t.watch?.[0];
+  if (t.stage === "late") {
+    return `We would proceed carefully. ${lead}${caveat ? ` The biggest concern: ${caveat}` : ""}`;
+  }
+  if (t.stage === "early") {
+    return `Yes — if you can live with the tradeoffs. ${lead}${caveat ? ` Just know: ${caveat}` : ""}`;
+  }
+  return `Conditionally yes. ${lead}${caveat ? ` Watch for: ${caveat}` : ""} ${stage?.blurb ? stage.blurb : ""}`.trim();
+}
+
+function getScoutPublication(now = new Date()) {
+  const d = new Date(now);
+  const day = d.getDay();
+  const monOffset = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + monOffset);
+  monday.setHours(0, 0, 0, 0);
+
+  const weekLabel = `Week of ${monday.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`;
+
+  const utc = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = utc.getUTCDay() || 7;
+  utc.setUTCDate(utc.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
+  const weekOfYear = Math.ceil((((utc - yearStart) / 86400000) + 1) / 7);
+
+  return { weekLabel, issue: String(weekOfYear).padStart(3, "0") };
+}
+
+function scoutEditorialFor(t) {
+  const ed = SCOUT_EDITORIAL[t.id];
+  if (ed) return { headline: ed.headline, deck: t.hook, cta: ed.cta };
+  return {
+    headline: t.hook,
+    deck: t.never || t.hook,
+    cta: `Meet ${t.name} →`,
+  };
+}
+
+function scoutStageFor(t) {
+  return SCOUT_STAGE[t.stage] || SCOUT_STAGE.heating;
+}
+
+function ScoutMasthead({ weekLabel, issue }) {
+  return (
+    <header className="scout-masthead">
+      <div className="scout-masthead-rule" />
+      <div className="scout-masthead-brand">The Scout Report</div>
+      <p className="scout-masthead-tagline">Finding tomorrow&apos;s hometowns before everyone else does.</p>
+      <div className="scout-masthead-meta">
+        <span>{weekLabel}</span>
+        <span className="scout-masthead-dot">·</span>
+        <span>Issue No. {issue}</span>
+      </div>
+      <div className="scout-masthead-rule" style={{ marginTop: 32 }} />
+    </header>
+  );
+}
+
+function ScoutImage({ town, st, className, loadDelay = 0 }) {
+  const chain = useMemo(
+    () => getTownImageChain(town, st),
+    [town.id, town.name, town.sub, town.image, st]
+  );
+  const [src, setSrc] = useState(() => chain[0] || US_FALLBACK_IMAGE);
   const failedUrls = useRef(new Set());
 
   useEffect(() => {
     let cancelled = false;
-    setSrc(getTownImage(town, stateAbbr));
+    setSrc(chain[0] || US_FALLBACK_IMAGE);
     failedUrls.current = new Set();
 
-    (async () => {
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            town: { id: town.id, name: town.name, sub: town.sub, image: town.image },
+            stateAbbr: st,
+          }),
+        });
+        const data = await res.json();
+        if (!cancelled && data.image && isValidImageUrl(data.image) && isModernHeroPhoto(data.image)) {
+          setSrc(data.image);
+        } else if (!cancelled) {
+          failedUrls.current.add(data.image);
+          setSrc(getTownImageFallback(town, data.image, st, failedUrls.current));
+        }
+      } catch {}
+    }, loadDelay);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [town.id, town.name, town.sub, town.image, st, loadDelay, chain]);
+
+  const handleError = () => {
+    setSrc((prev) => {
+      failedUrls.current.add(prev);
+      return getTownImageFallback(town, prev, st, failedUrls.current);
+    });
+  };
+
+  return (
+    <img
+      className={className}
+      src={src}
+      alt=""
+      decoding="async"
+      onError={handleError}
+    />
+  );
+}
+
+function ScoutCoverStory({ town, st, onOpen }) {
+  const stage = scoutStageFor(town);
+  const { headline, deck, cta } = scoutEditorialFor(town);
+  return (
+    <button type="button" className="scout-cover" onClick={onOpen}>
+      <div className="scout-cover-bleed">
+        <ScoutImage town={town} st={st} className="scout-cover-img" />
+        <div className="scout-cover-gradient" />
+        <div className="scout-cover-body">
+          <span className="scout-stage-pill" style={{ background: stage.c }}>{stage.label}</span>
+          <div className="scout-kicker">Cover Story</div>
+          <h2 className="scout-cover-headline">{headline}</h2>
+          <div className="scout-cover-byline">
+            {town.name} · {parseTownLocation(town, st)}
+          </div>
+          <p className="scout-cover-deck">{deck}</p>
+          <div className="scout-cover-cta">{cta}</div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function ScoutEditorialCard({ town, st, onOpen, loadDelay = 0 }) {
+  const stage = scoutStageFor(town);
+  const { headline } = scoutEditorialFor(town);
+  return (
+    <button type="button" className="scout-card" onClick={onOpen}>
+      <div className="scout-card-visual">
+        <ScoutImage town={town} st={st} className="scout-card-img" loadDelay={loadDelay} />
+        <span className="scout-stage-pill scout-stage-pill-sm" style={{ background: stage.c }}>{stage.label}</span>
+      </div>
+      <h3 className="scout-card-name">{town.name}</h3>
+      <div className="scout-card-state">{parseTownLocation(town, st)}</div>
+      <p className="scout-card-teaser">{headline}</p>
+    </button>
+  );
+}
+
+function TownVisual({
+  town,
+  stateAbbr,
+  stage,
+  rank,
+  score,
+  loadDelay = 0,
+  detail = false,
+  hook,
+  saved,
+  onSave,
+  onShare,
+  shareLabel = "Share",
+}) {
+  const chain = useMemo(
+    () => getTownImageChain(town, stateAbbr),
+    [town.id, town.name, town.sub, town.image, stateAbbr]
+  );
+  const [src, setSrc] = useState(() => chain[0] || US_FALLBACK_IMAGE);
+  const failedUrls = useRef(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    setSrc(chain[0] || US_FALLBACK_IMAGE);
+    failedUrls.current = new Set();
+
+    const cacheKey = `wn-img:${town.id || town.name}:${stateAbbr || ""}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached && isValidImageUrl(cached) && isModernHeroPhoto(cached)) {
+        setSrc(cached);
+      }
+    } catch {}
+
+    const timer = setTimeout(async () => {
       try {
         const res = await fetch("/api/images", {
           method: "POST",
@@ -638,14 +1237,23 @@ function TownVisual({ town, stateAbbr, stage, rank, score }) {
           }),
         });
         const data = await res.json();
-        if (!cancelled && data.image) setSrc(data.image);
+        if (!cancelled && data.image && isValidImageUrl(data.image) && isModernHeroPhoto(data.image)) {
+          setSrc(data.image);
+          try {
+            sessionStorage.setItem(cacheKey, data.image);
+          } catch {}
+        } else if (!cancelled && data.image) {
+          failedUrls.current.add(data.image);
+          setSrc(getTownImageFallback(town, data.image, stateAbbr, failedUrls.current));
+        }
       } catch {}
-    })();
+    }, loadDelay);
 
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [town.id, town.name, town.sub, town.image, stateAbbr]);
+  }, [town.id, town.name, town.sub, town.image, stateAbbr, loadDelay, chain]);
 
   const resolveFromApi = async (skipUrl) => {
     try {
@@ -659,32 +1267,31 @@ function TownVisual({ town, stateAbbr, stage, rank, score }) {
         }),
       });
       const data = await res.json();
-      if (data.image) {
+      if (data.image && isValidImageUrl(data.image) && isModernHeroPhoto(data.image)) {
         setSrc(data.image);
         return;
       }
+      if (data.image) failedUrls.current.add(data.image);
     } catch {}
-    setSrc(getTownImageFallback(town, skipUrl, stateAbbr));
+    setSrc(getTownImageFallback(town, skipUrl, stateAbbr, failedUrls.current));
   };
 
   const handleError = () => {
     setSrc((prev) => {
-      if (!failedUrls.current.has(prev)) {
-        failedUrls.current.add(prev);
-        resolveFromApi(prev);
-      } else {
-        setSrc(US_FALLBACK_IMAGE);
-      }
-      return prev;
+      failedUrls.current.add(prev);
+      const next = getTownImageFallback(town, prev, stateAbbr, failedUrls.current);
+      if (next !== prev) return next;
+      resolveFromApi(prev);
+      return US_FALLBACK_IMAGE;
     });
   };
 
-  const placeholder = getTownImageChain(town, stateAbbr).at(-1) || US_FALLBACK_IMAGE;
+  const placeholder = chain[chain.length - 1] || US_FALLBACK_IMAGE;
 
   return (
     <div className="town-visual-wrap">
       <div
-        className="town-visual"
+        className={`town-visual${detail ? " town-visual-detail" : ""}`}
         style={{
           backgroundImage: `url("${placeholder}")`,
           backgroundSize: "cover",
@@ -699,12 +1306,38 @@ function TownVisual({ town, stateAbbr, stage, rank, score }) {
           onError={handleError}
         />
         <span className="stage-pill" style={{ background: stage.c }}>{stage.label}</span>
-        <div className="town-overlay">
-          {rank && <div className="rank">{String(rank).padStart(2, "0")} / BEST MATCHES</div>}
-          <h3 className="town-name">{town.name}</h3>
-          <div className="town-sub">{town.sub}</div>
+        <div className={`town-overlay${detail ? " town-overlay-detail" : ""}`}>
+          {rank && !detail && <div className="rank">{String(rank).padStart(2, "0")} / BEST MATCHES</div>}
+          <h3 className={`town-name${detail ? " town-name-detail" : ""}`}>{town.name}</h3>
+          <div className="town-sub">{detail ? parseTownLocation(town, stateAbbr) : town.sub}</div>
+          {detail && hook && <p className="town-hero-summary">{hook}</p>}
+          {detail && (
+            <div className="hero-actions">
+              <button
+                type="button"
+                className="hero-btn"
+                data-on={saved ? "1" : "0"}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSave?.();
+                }}
+              >
+                {saved ? "♥ Saved" : "♥ Save"}
+              </button>
+              <button
+                type="button"
+                className="hero-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShare?.();
+                }}
+              >
+                {shareLabel}
+              </button>
+            </div>
+          )}
         </div>
-        {Number.isFinite(score) && (
+        {Number.isFinite(score) && !detail && (
           <div className="fit-ring">
             <div>
               <div className="fit-num">{Math.round(score * 100)}</div>
@@ -717,72 +1350,212 @@ function TownVisual({ town, stateAbbr, stage, rank, score }) {
   );
 }
 
-function Card({ t, st, rank, score, open, toggle, mark, marks, budget }) {
+function parseTownLocation(t, st) {
+  if (st && US[st]) return US[st];
+  if (t.sub) {
+    const part = t.sub.split("·")[0].trim();
+    if (part) return part;
+  }
+  return t.sub || "";
+}
+
+function getSimilarTowns(t, pool, limit = 3) {
+  const others = (pool || []).filter((x) => x.id !== t.id);
+  const sameStage = others.filter((x) => x.stage === t.stage);
+  const rest = others.filter((x) => x.stage !== t.stage);
+  return [...sameStage, ...rest].slice(0, limit);
+}
+
+function hiddenFindBadge(t) {
+  const text = [
+    t.sub, t.hook, t.never, t.history,
+    ...(t.why || []), t.jobs, t.get, t.cost,
+    ...(t.watch || []),
+  ].join(" ").toLowerCase();
+
+  if (/coastal|gulf|beach|ocean|seashore|atlantic|pacific/.test(text)) return "Coastal Secret";
+  if (/ozark|appalachian|foothill|mountain/.test(text)) return "Mountain Escape";
+  if (/walkable/.test(text)) return "Walkable";
+  if ((t.delta && /[−-]/.test(t.delta)) || (t.stage === "early" && /cheap|afford/.test(text))) return "Still Affordable";
+  if (/under the national|below.*median|cost of living still under|20% below/.test(text)) return "Great Value";
+  if (/strongest job|semiconductor|walmart hq|tyson|job market in the country/.test(text)) return "Job Growth";
+  if (t.stage === "heating" || (t.delta && /\+/.test(t.delta)) || /fastest-growing|doubled|grew \d+%|population.*jump/.test(text)) return "On the Rise";
+
+  return "Worth Watching";
+}
+
+function Card({
+  t,
+  st,
+  townKey,
+  peerTowns,
+  rank,
+  score,
+  open,
+  toggle,
+  onNavigate,
+  mark,
+  marks,
+  budget,
+  loadDelay = 0,
+  findBadge,
+}) {
   const m = marks[t.id];
   const stage = STAGE[t.stage] || STAGE.heating;
   const over = t.price && t.price > budget;
+  const [shared, setShared] = useState(false);
+  const similar = useMemo(() => getSimilarTowns(t, peerTowns), [t.id, t.stage, peerTowns]);
 
-  return (
-    <article className="town-card" style={{ borderColor: m === "yes" ? C.pine : C.rule }}>
-      <TownVisual town={t} stateAbbr={st} stage={stage} rank={rank} score={score} />
+  const handleShare = async () => {
+    const loc = parseTownLocation(t, st);
+    const text = `${t.name}${loc ? `, ${loc}` : ""} — ${t.hook}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${t.name} on Where Next`, text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      }
+    } catch {}
+  };
 
-      <button className="town-summary" onClick={toggle}>
-        <p className="hook">{t.hook}</p>
-        <TownFacts t={t} />
-        <div className="stats">
-          <div className="stat">
-            <div className="stat-value" style={{ color: over ? C.rust : C.text }}>{t.priceLabel}</div>
-            <div className="stat-label">Typical home</div>
-          </div>
-          <div className="stat">
-            <div className="stat-value" style={{ fontSize: 19 }}>{t.delta}</div>
-            <div className="stat-label">Market direction</div>
-          </div>
-          <div className="stat">
-            <div className="stat-value" style={{ color: stage.c }}>{stage.label}</div>
-            <div className="stat-label">Discovery timing</div>
-          </div>
-        </div>
-        {t.note && <div className="note">{t.note}</div>}
-      </button>
+  const getPeerKey = (peer) => peer.id + (peer.st || "");
 
-      {open && (
-        <div className="expanded">
+  if (open) {
+    return (
+      <article className="town-card town-card-open" style={{ borderColor: m === "yes" ? C.pine : C.rule }}>
+        <TownVisual
+          town={t}
+          stateAbbr={st}
+          stage={stage}
+          loadDelay={loadDelay}
+          detail
+          hook={t.hook}
+          saved={m === "yes"}
+          onSave={() => mark(t.id, "yes")}
+          onShare={handleShare}
+          shareLabel={shared ? "Copied!" : "Share"}
+        />
+
+        <div className="town-detail">
+          <button type="button" className="detail-collapse" onClick={toggle}>
+            ← Collapse
+          </button>
+
+          <section className="scout-verdict">
+            <div>
+              <div className="scout-verdict-label">Scout Verdict</div>
+              <p className="scout-verdict-copy">{scoutVerdictText(t, stage)}</p>
+            </div>
+            <ScoutScorecard t={t} budget={budget} />
+          </section>
+
+          <TownFactsStrip t={t} stage={stage} over={over} />
+
+          {(t.why?.length > 0 || t.watch?.length > 0) && (
+            <div className="fit-editorial">
+              {t.why?.length > 0 && (
+                <div className="fit-editorial-col">
+                  <div className="fit-editorial-col-label">Perfect for</div>
+                  <Bullets items={t.why.slice(0, 2)} />
+                </div>
+              )}
+              {t.watch?.length > 0 && (
+                <div className="fit-editorial-col">
+                  <div className="fit-editorial-col-label fit-editorial-col-label-warn">Skip if</div>
+                  <Bullets items={t.watch.slice(0, 2)} color={C.soft} />
+                </div>
+              )}
+            </div>
+          )}
+
           {t.verified === false && (
-            <p style={{ color: C.rust, fontSize: 13, lineHeight: 1.6 }}>
+            <p style={{ color: C.rust, fontSize: 13, lineHeight: 1.6, marginBottom: 32 }}>
               Too few sales for a reliable median. Treat this as a starting point and check live listings.
             </p>
           )}
 
-          <Section label="Why you have never heard of it">
-            <p className="section-title">{t.never}</p>
-          </Section>
+          <section className="article-section">
+            <div className="section-label">Why it matters</div>
+            <p className="article-lede">{t.never}</p>
+          </section>
 
-          <div className="split">
-            <div>
-              <Section label="History"><p className="body-copy">{t.history}</p></Section>
-              <Section label="Why it is turning"><Bullets items={t.why} /></Section>
-            </div>
-            <div>
-              <Section label="Who is hiring"><p className="body-copy">{t.jobs}</p></Section>
-              <Section label="What your money buys">
-                <p className="body-copy">{t.get}</p>
-                {t.cost && <p className="body-copy" style={{ color: C.soft, marginTop: 10, fontSize: 13 }}>{t.cost}</p>}
-              </Section>
-            </div>
-          </div>
+          {t.why?.length > 0 && (
+            <section className="article-section">
+              <div className="section-label">Why it&apos;s rising</div>
+              <Bullets items={t.why} />
+            </section>
+          )}
 
-          {t.doing && <Section label="Things to do"><Bullets items={t.doing} /></Section>}
+          {(t.get || t.cost) && (
+            <section className="article-section">
+              <div className="section-label">Buying power</div>
+              {t.get && <p className="body-copy">{t.get}</p>}
+              {t.cost && <p className="body-copy" style={{ color: REPORT_LABEL, marginTop: t.get ? 14 : 0, fontSize: 15 }}>{t.cost}</p>}
+            </section>
+          )}
 
-          <div className="catch">
-            <div className="eyebrow" style={{ color: C.rust }}>Before you move here</div>
-            <h4 className="catch-title">The Catch</h4>
-            <Bullets items={t.watch} color={C.rust} />
-          </div>
+          {t.jobs && (
+            <section className="article-section">
+              <div className="section-label">Who&apos;s hiring</div>
+              <p className="body-copy">{t.jobs}</p>
+            </section>
+          )}
 
-          <Section label="See what is actually for sale">
-            <Listings t={t} st={st} budget={budget} />
-          </Section>
+          {t.history && (
+            <section className="article-section">
+              <div className="section-label">History</div>
+              <p className="body-copy">{t.history}</p>
+            </section>
+          )}
+
+          {t.doing && (
+            <section className="article-section">
+              <div className="section-label">Things to do</div>
+              <Bullets items={t.doing} />
+            </section>
+          )}
+
+          {t.watch?.length > 0 && (
+            <section className="article-section">
+              <div className="section-label">Before you move</div>
+              <Bullets items={t.watch} color={C.rust} />
+            </section>
+          )}
+
+          <section className="report-close">
+            <div className="section-label">Would we move here?</div>
+            <p className="report-close-copy">{wouldWeMoveSummary(t, stage)}</p>
+          </section>
+
+          {similar.length > 0 && onNavigate && (
+            <section className="article-section similar-towns">
+              <div className="section-label">Similar towns you might like</div>
+              <div className="similar-grid">
+                {similar.map((peer) => (
+                  <button
+                    key={getPeerKey(peer)}
+                    type="button"
+                    className="similar-card"
+                    onClick={() => onNavigate(getPeerKey(peer))}
+                  >
+                    <div className="similar-name">{peer.name}</div>
+                    <p className="similar-hook">{peer.hook}</p>
+                    <div className="similar-meta">
+                      {[peer.priceLabel, STAGE[peer.stage]?.label].filter(Boolean).join(" · ")}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="article-section">
+            <Section label="See what is actually for sale">
+              <Listings t={t} st={st} budget={budget} />
+            </Section>
+          </section>
 
           <div className="actions">
             <button className="chip" data-on={m === "yes" ? "1" : "0"} onClick={() => mark(t.id, "yes")}>
@@ -796,7 +1569,34 @@ function Card({ t, st, rank, score, open, toggle, mark, marks, budget }) {
             </span>
           </div>
         </div>
-      )}
+      </article>
+    );
+  }
+
+  return (
+    <article className="town-card" style={{ borderColor: m === "yes" ? C.pine : C.rule }}>
+      <TownVisual town={t} stateAbbr={st} stage={stage} rank={rank} score={score} loadDelay={loadDelay} />
+
+      <button type="button" className="town-summary" onClick={toggle}>
+        {findBadge && <span className="find-badge">{findBadge}</span>}
+        <p className="hook">{t.hook}</p>
+        <TownFacts t={t} />
+        <div className="stats">
+          <div className="stat">
+            <div className="stat-value" style={{ color: over ? C.rust : C.text }}>{t.priceLabel}</div>
+            <div className="stat-label">Typical home</div>
+          </div>
+          <div className="stat">
+            <div className="stat-value" style={{ fontSize: 19 }}>{t.delta}</div>
+            <div className="stat-label">Market direction</div>
+          </div>
+          <div className="stat">
+            <div className="stat-value" style={{ color: stage.c }}>{stage.label}</div>
+            <div className="stat-label">Discovery stage</div>
+          </div>
+        </div>
+        {t.note && <div className="note">{t.note}</div>}
+      </button>
     </article>
   );
 }
