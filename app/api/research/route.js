@@ -2,6 +2,9 @@
 // Live web search, then structured output. This is the piece that needs a server.
 
 import { US } from "@/lib/data";
+import { enrichTownImages } from "@/lib/imageSearch";
+import { IMAGE_PROMPT_RULE } from "@/lib/images";
+import { FACTS_PROMPT_RULES, factsSchemaJson } from "@/lib/townFacts";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -98,6 +101,8 @@ const schema = (headline, blurbInstruction) => `Turn the research notes below in
       "delta": "+2.1% this year",
       "note": "Optional. Nuance about the price that doesn't fit in priceLabel.",
       "hook": "One sentence that makes someone want to read on.",
+      "image": "https://... publicly accessible URL of this town or its best-known landmark",
+      "facts": ${factsSchemaJson()},
       "never": "Why you've never heard of it. The most important sentence on the card.",
       "history": "Two sentences: what it was built on, and what changed.",
       "why": ["three short reasons it's turning now"],
@@ -119,6 +124,8 @@ RULES:
 - If a town is too small for a reliable median, set "verified": false and put the caveat in "note".
 - "stage": early = the growth hasn't hit the price yet. heating = found, but there's a window. late = you missed it.
 - "z" is the Zillow city slug, "r" is the Realtor.com slug. Get the state right.
+- ${IMAGE_PROMPT_RULE}
+${FACTS_PROMPT_RULES.map((r) => `- ${r}`).join("\n")}
 - Exactly five towns. Every string under 40 words. Never invent a number.
 
 RESEARCH NOTES:
@@ -160,6 +167,9 @@ export async function POST(req) {
     }
 
     if (abbr) out.abbr = abbr;
+    if (out.towns?.length) {
+      await enrichTownImages(out.towns, abbr || undefined);
+    }
     return Response.json(out);
   } catch (e) {
     return Response.json({ error: e.message }, { status: 500 });

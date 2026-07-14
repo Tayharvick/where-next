@@ -1,42 +1,33 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { US, STATES, FINDS } from "@/lib/data";
+import { HERO_IMAGE, getTownImage, getTownImageChain, getTownImageFallback, US_FALLBACK_IMAGE } from "@/lib/images";
+import { getTownFactsDisplay } from "@/lib/townFacts";
 
 const KEY = "where-next:v7";
 
 const C = {
-  ink: "#11130F",
-  charcoal: "#1A1D18",
-  cream: "#F3F0E8",
-  paper: "#FAF8F2",
+  ink: "#1A1A1A",
+  charcoal: "#2D2D2D",
+  cream: "#FAFAF8",
+  paper: "#FFFFFF",
   card: "#FFFFFF",
-  text: "#1D211B",
-  soft: "#6B7067",
-  faint: "#9B9F96",
-  rule: "#E2DED4",
-  pine: "#315D48",
-  sage: "#6E8875",
-  amber: "#C58B45",
-  rust: "#A8573E",
-  gold: "#D8B06A",
+  text: "#1A1A1A",
+  soft: "#717171",
+  faint: "#B0B0B0",
+  rule: "rgba(0,0,0,0.08)",
+  pine: "#1E4D45",
+  sage: "#3D6B62",
+  amber: "#C17F3A",
+  rust: "#B84A3A",
+  gold: "#C9A962",
+  accent: "#1E4D45",
 };
 
-const DISPLAY = "Georgia,'Times New Roman',serif";
-const BODY = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif";
+const DISPLAY = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif";
+const BODY = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif";
 const MONO = "ui-monospace,'SF Mono',Menlo,Consolas,monospace";
-
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2200&q=88";
-
-const SCENES = {
-  early:
-    "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1400&q=84",
-  heating:
-    "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1400&q=84",
-  late:
-    "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=84",
-};
 
 const STAGE = {
   early: {
@@ -240,100 +231,115 @@ export default function WhereNext() {
         html{scroll-behavior:smooth}
         body{margin:0;background:${C.cream};color:${C.text}}
         button,input,a{font:inherit}
-        .app-shell{font-family:${BODY};background:${C.cream};min-height:100vh;color:${C.text}}
+        .app-shell{font-family:${BODY};background:${C.cream};min-height:100vh;color:${C.text};-webkit-font-smoothing:antialiased}
         .page{max-width:1180px;margin:0 auto;padding-left:24px;padding-right:24px}
-        .eyebrow{font-family:${MONO};font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:${C.faint}}
-        .hero-wrap{position:relative;min-height:690px;color:#fff;background-image:linear-gradient(180deg,rgba(8,12,9,.42),rgba(8,12,9,.72)),url("${HERO_IMAGE}");background-size:cover;background-position:center}
-        .hero-wrap:after{content:"";position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(transparent,${C.cream})}
-        .nav{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding-top:24px}
-        .brand{font-family:${DISPLAY};font-size:27px;font-weight:700;letter-spacing:-.03em}
-        .nav-links{display:flex;gap:26px;align-items:center}
-        .nav-link{background:transparent;border:0;color:rgba(255,255,255,.72);cursor:pointer;font-size:13px;padding:8px 0}
-        .nav-link[data-on="1"]{color:#fff;border-bottom:1px solid ${C.gold}}
-        .hero-content{position:relative;z-index:2;max-width:900px;padding-top:118px}
-        .hero-title{font-family:${DISPLAY};font-size:clamp(54px,8vw,96px);line-height:.94;letter-spacing:-.045em;margin:0;max-width:900px;text-wrap:balance}
-        .hero-copy{font-size:18px;line-height:1.65;color:rgba(255,255,255,.8);max-width:660px;margin:24px 0 0}
-        .search-panel{margin-top:42px;background:rgba(255,255,255,.94);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.4);border-radius:22px;padding:14px;display:flex;gap:12px;box-shadow:0 24px 70px rgba(0,0,0,.28);max-width:920px}
-        .search-input{flex:1;min-width:0;border:0;background:transparent;color:${C.text};font-size:18px;padding:15px 16px;outline:none}
-        .search-input::placeholder{color:#8A8D85}
-        .search-button{border:0;background:${C.pine};color:#fff;border-radius:14px;padding:16px 24px;font-weight:700;cursor:pointer;white-space:nowrap}
-        .search-button:hover{background:#274C3B}
-        .search-button:disabled{opacity:.52;cursor:default}
-        .examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-        .example{border:1px solid rgba(255,255,255,.28);background:rgba(17,19,15,.22);color:rgba(255,255,255,.85);border-radius:999px;padding:8px 12px;font-size:12px;cursor:pointer;backdrop-filter:blur(7px)}
-        .example:hover{background:rgba(255,255,255,.15)}
+        .eyebrow{font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};font-weight:500}
+        .hero-wrap{position:relative;min-height:690px;color:#fff;background-image:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.55)),url("${HERO_IMAGE}");background-size:cover;background-position:center}
+        .hero-wrap:after{content:"";position:absolute;left:0;right:0;bottom:0;height:140px;background:linear-gradient(transparent,${C.cream})}
+        .nav{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding-top:28px}
+        .brand{font-family:${DISPLAY};font-size:26px;font-weight:600;letter-spacing:-.03em}
+        .nav-links{display:flex;gap:28px;align-items:center}
+        .nav-link{background:transparent;border:0;color:rgba(255,255,255,.75);cursor:pointer;font-size:14px;padding:8px 0;font-weight:500;transition:color .2s}
+        .nav-link:hover{color:#fff}
+        .nav-link[data-on="1"]{color:#fff;border-bottom:2px solid #fff}
+        .hero-content{position:relative;z-index:2;max-width:900px;padding-top:112px}
+        .hero-title{font-family:${DISPLAY};font-size:clamp(48px,7vw,88px);line-height:1.02;letter-spacing:-.04em;margin:0;max-width:900px;text-wrap:balance;font-weight:600}
+        .hero-copy{font-size:17px;line-height:1.65;color:rgba(255,255,255,.82);max-width:620px;margin:22px 0 0;font-weight:400}
+        .search-panel{margin-top:40px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.6);border-radius:16px;padding:8px 8px 8px 20px;display:flex;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);max-width:720px}
+        .search-input{flex:1;min-width:0;border:0;background:transparent;color:${C.text};font-size:16px;padding:14px 0;outline:none}
+        .search-input::placeholder{color:${C.faint}}
+        .search-button{border:0;background:${C.ink};color:#fff;border-radius:12px;padding:14px 22px;font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap;transition:background .2s,transform .15s}
+        .search-button:hover{background:${C.charcoal}}
+        .search-button:active{transform:scale(.98)}
+        .search-button:disabled{opacity:.45;cursor:default;transform:none}
+        .examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+        .example{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);border-radius:999px;padding:8px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:background .2s}
+        .example:hover{background:rgba(255,255,255,.2)}
         .loading{margin-top:22px;display:flex;align-items:center;gap:12px;color:#fff;font-size:14px}
-        .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.28);border-top-color:${C.gold};border-radius:50%;animation:spin .8s linear infinite}
+        .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
         @keyframes spin{to{transform:rotate(360deg)}}
-        .content{position:relative;z-index:3;margin-top:-42px;padding-bottom:90px}
-        .toolbar{background:${C.paper};border:1px solid rgba(70,70,60,.08);border-radius:18px;padding:12px;box-shadow:0 16px 50px rgba(22,26,20,.08);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-        .tab{border:0;background:transparent;color:${C.soft};border-radius:12px;padding:11px 15px;font-size:13px;cursor:pointer}
+        .content{position:relative;z-index:3;margin-top:-48px;padding-bottom:100px}
+        .toolbar{background:${C.paper};border:1px solid ${C.rule};border-radius:14px;padding:6px;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+        .tab{border:0;background:transparent;color:${C.soft};border-radius:10px;padding:10px 16px;font-size:14px;cursor:pointer;font-weight:500;transition:background .2s,color .2s}
         .tab[data-on="1"]{background:${C.ink};color:#fff}
-        .count{margin-left:auto;font-family:${MONO};font-size:11px;color:${C.faint};padding:0 8px}
-        .intro{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;margin:50px 0 26px}
-        .intro-title{font-family:${DISPLAY};font-size:clamp(34px,5vw,56px);line-height:1.05;letter-spacing:-.035em;margin:0;max-width:780px}
-        .intro-copy{color:${C.soft};font-size:15px;line-height:1.7;max-width:690px;margin:14px 0 0}
-        .budget-card{background:${C.paper};border:1px solid ${C.rule};border-radius:18px;padding:18px 20px;margin-bottom:24px}
+        .count{margin-left:auto;font-family:${MONO};font-size:11px;color:${C.faint};padding:0 12px}
+        .intro{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;margin:48px 0 28px}
+        .intro-title{font-family:${DISPLAY};font-size:clamp(32px,4.5vw,52px);line-height:1.08;letter-spacing:-.03em;margin:0;max-width:780px;font-weight:600}
+        .intro-copy{color:${C.soft};font-size:16px;line-height:1.65;max-width:640px;margin:12px 0 0}
+        .budget-card{background:${C.paper};border:1px solid ${C.rule};border-radius:16px;padding:20px 22px;margin-bottom:28px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
         .budget-row{display:flex;align-items:center;gap:18px}
-        .budget-value{font-family:${DISPLAY};font-size:28px;min-width:90px;text-align:right}
-        .tune-button{width:100%;border:0;border-top:1px solid ${C.rule};background:transparent;margin-top:16px;padding:14px 0 0;display:flex;justify-content:space-between;color:${C.soft};cursor:pointer}
+        .budget-value{font-family:${DISPLAY};font-size:26px;min-width:90px;text-align:right;font-weight:600;letter-spacing:-.02em}
+        .tune-button{width:100%;border:0;border-top:1px solid ${C.rule};background:transparent;margin-top:18px;padding:14px 0 0;display:flex;justify-content:space-between;color:${C.soft};cursor:pointer}
         input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:999px;background:${C.rule}}
-        input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:${C.pine};cursor:pointer;box-shadow:0 0 0 4px rgba(49,93,72,.12)}
-        .town-card{background:${C.card};border:1px solid ${C.rule};border-radius:24px;overflow:hidden;margin-bottom:24px;box-shadow:0 10px 35px rgba(28,34,25,.06);transition:transform .2s,box-shadow .2s}
-        .town-card:hover{transform:translateY(-2px);box-shadow:0 18px 50px rgba(28,34,25,.1)}
-        .town-visual{position:relative;min-height:330px;background-size:cover;background-position:center;display:flex;align-items:flex-end}
-        .town-visual:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,15,11,.08),rgba(10,15,11,.82))}
-        .town-overlay{position:relative;z-index:1;width:100%;padding:34px;color:#fff}
-        .rank{font-family:${MONO};font-size:12px;color:rgba(255,255,255,.62);margin-bottom:10px}
-        .town-name{font-family:${DISPLAY};font-size:clamp(40px,6vw,68px);letter-spacing:-.045em;line-height:.98;margin:0}
-        .town-sub{margin-top:9px;color:rgba(255,255,255,.68);font-size:13px}
-        .stage-pill{position:absolute;z-index:2;top:24px;right:24px;border-radius:999px;color:#fff;padding:8px 13px;font-family:${MONO};font-size:10px;letter-spacing:.12em;text-transform:uppercase}
-        .fit-ring{position:absolute;z-index:2;right:28px;bottom:28px;width:90px;height:90px;border-radius:50%;display:grid;place-items:center;background:rgba(12,17,13,.72);border:1px solid rgba(255,255,255,.34);backdrop-filter:blur(8px)}
-        .fit-num{font-family:${DISPLAY};font-size:30px;line-height:1}
-        .fit-label{font-family:${MONO};font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-top:3px;text-align:center}
-        .town-summary{padding:26px 30px 24px;cursor:pointer;border:0;background:transparent;width:100%;text-align:left}
-        .hook{font-family:${DISPLAY};font-size:24px;line-height:1.45;margin:0;max-width:850px}
-        .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:24px}
-        .stat{background:${C.paper};border-radius:15px;padding:16px}
-        .stat-value{font-family:${DISPLAY};font-size:25px;line-height:1.1}
-        .stat-label{font-family:${MONO};font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:${C.faint};margin-top:7px}
+        input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:${C.ink};cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+        .town-card{background:${C.card};border:1px solid ${C.rule};border-radius:20px;overflow:hidden;margin-bottom:28px;box-shadow:0 2px 8px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.04);transition:transform .25s ease,box-shadow .25s ease}
+        .town-card:hover{transform:translateY(-3px);box-shadow:0 4px 12px rgba(0,0,0,.06),0 16px 40px rgba(0,0,0,.08)}
+        .town-visual{position:relative;min-height:340px;background-color:#2a2a2a;display:flex;align-items:flex-end;overflow:hidden;transition:transform .4s ease}
+        .town-visual-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0}
+        .town-card:hover .town-visual{transform:scale(1.01)}
+        .town-visual-wrap{overflow:hidden}
+        .town-visual:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.72) 100%)}
+        .town-overlay{position:relative;z-index:1;width:100%;padding:32px 34px;color:#fff}
+        .rank{font-family:${MONO};font-size:11px;color:rgba(255,255,255,.6);margin-bottom:8px;letter-spacing:.1em}
+        .town-name{font-family:${DISPLAY};font-size:clamp(36px,5.5vw,60px);letter-spacing:-.04em;line-height:1;font-weight:600;margin:0}
+        .town-sub{margin-top:10px;color:rgba(255,255,255,.72);font-size:14px;font-weight:400}
+        .stage-pill{position:absolute;z-index:2;top:20px;right:20px;border-radius:999px;color:#fff;padding:7px 14px;font-family:${MONO};font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+        .fit-ring{position:absolute;z-index:2;right:24px;bottom:24px;width:88px;height:88px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(12px)}
+        .fit-num{font-family:${DISPLAY};font-size:28px;line-height:1;font-weight:600}
+        .fit-label{font-family:${MONO};font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-top:2px;text-align:center}
+        .town-summary{padding:28px 32px 26px;cursor:pointer;border:0;background:transparent;width:100%;text-align:left}
+        .hook{font-family:${DISPLAY};font-size:22px;line-height:1.45;margin:0;max-width:820px;font-weight:500;letter-spacing:-.02em}
+        .town-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:22px;padding-top:22px;border-top:1px solid ${C.rule}}
+        .fact-item{background:${C.cream};border-radius:12px;padding:12px 14px;min-height:68px;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}
+        .fact-head{display:flex;align-items:center;gap:7px}
+        .fact-icon{display:flex;align-items:center;justify-content:center;color:${C.soft};flex-shrink:0}
+        .fact-label{font-size:11px;color:${C.faint};font-weight:500;line-height:1.2}
+        .fact-value{font-size:14px;font-weight:600;color:${C.text};line-height:1.3;letter-spacing:-.01em}
+        .fact-value[data-pending="1"]{color:${C.faint};font-weight:500;font-size:13px}
+        .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}
+        .stat{background:${C.cream};border-radius:12px;padding:16px 18px}
+        .stat-value{font-family:${DISPLAY};font-size:24px;line-height:1.1;font-weight:600;letter-spacing:-.02em}
+        .stat-label{font-family:${MONO};font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:${C.faint};margin-top:6px;font-weight:500}
         .note{color:${C.soft};font-size:13px;line-height:1.6;border-top:1px solid ${C.rule};padding-top:16px;margin-top:20px}
-        .expanded{border-top:1px solid ${C.rule};padding:8px 30px 30px}
-        .section{padding-top:26px}
-        .section-label{font-family:${MONO};font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${C.faint};margin-bottom:10px}
-        .section-title{font-family:${DISPLAY};font-size:24px;line-height:1.45;margin:0}
-        .split{display:grid;grid-template-columns:1fr 1fr;gap:34px}
-        .body-copy{font-size:15px;line-height:1.72;color:${C.text};margin:0}
+        .expanded{border-top:1px solid ${C.rule};padding:8px 32px 32px}
+        .section{padding-top:28px}
+        .section-label{font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};margin-bottom:10px;font-weight:500}
+        .section-title{font-family:${DISPLAY};font-size:22px;line-height:1.45;margin:0;font-weight:500;letter-spacing:-.02em}
+        .split{display:grid;grid-template-columns:1fr 1fr;gap:36px}
+        .body-copy{font-size:15px;line-height:1.7;color:${C.text};margin:0}
         .bullets{list-style:none;padding:0;margin:0}
-        .bullets li{display:flex;gap:10px;font-size:14px;line-height:1.6;margin-bottom:8px}
-        .catch{margin-top:26px;background:#FBF2EC;border:1px solid #E8C7B8;border-radius:18px;padding:22px}
-        .catch-title{font-family:${DISPLAY};font-size:27px;margin:0 0 12px;color:${C.rust}}
-        .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:22px}
-        .chip{border:1px solid ${C.rule};background:#fff;color:${C.soft};border-radius:999px;padding:10px 14px;cursor:pointer}
-        .chip[data-on="1"]{background:${C.pine};border-color:${C.pine};color:#fff}
-        .listing-link{display:inline-block;background:${C.ink};color:#fff;text-decoration:none;border-radius:12px;padding:11px 15px;font-size:13px}
-        .state-grid{display:flex;flex-wrap:wrap;gap:7px;margin:26px 0}
-        .state-button{width:44px;height:36px;border-radius:10px;background:transparent;font-family:${MONO};font-size:11px;cursor:pointer}
-        .unmapped{background:${C.paper};border:1px solid ${C.rule};border-radius:22px;padding:48px 30px;text-align:center}
-        .shortlist{margin-top:34px;background:${C.ink};color:#fff;border-radius:22px;padding:24px}
+        .bullets li{display:flex;gap:10px;font-size:14px;line-height:1.65;margin-bottom:8px}
+        .catch{margin-top:28px;background:#FDF8F6;border:1px solid rgba(184,74,58,.15);border-radius:16px;padding:24px}
+        .catch-title{font-family:${DISPLAY};font-size:24px;margin:0 0 12px;color:${C.rust};font-weight:600;letter-spacing:-.02em}
+        .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:24px}
+        .chip{border:1px solid ${C.rule};background:#fff;color:${C.soft};border-radius:999px;padding:10px 16px;cursor:pointer;font-size:14px;font-weight:500;transition:background .2s,border-color .2s,color .2s}
+        .chip:hover{border-color:${C.faint}}
+        .chip[data-on="1"]{background:${C.ink};border-color:${C.ink};color:#fff}
+        .listing-link{display:inline-block;background:${C.ink};color:#fff;text-decoration:none;border-radius:10px;padding:11px 16px;font-size:13px;font-weight:500;transition:background .2s}
+        .listing-link:hover{background:${C.charcoal}}
+        .state-grid{display:flex;flex-wrap:wrap;gap:6px;margin:24px 0}
+        .state-button{width:44px;height:36px;border-radius:8px;background:transparent;font-family:${MONO};font-size:11px;cursor:pointer;transition:background .2s,border-color .2s}
+        .unmapped{background:${C.paper};border:1px solid ${C.rule};border-radius:20px;padding:48px 32px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+        .shortlist{margin-top:36px;background:${C.ink};color:#fff;border-radius:20px;padding:26px 28px}
         .shortlist-items{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-        .shortlist-pill{border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:8px 13px;font-size:13px}
-        .footer-card{margin-top:38px;background:${C.ink};color:#fff;border-radius:24px;padding:30px}
+        .shortlist-pill{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:8px 14px;font-size:13px}
+        .footer-card{margin-top:40px;background:${C.ink};color:#fff;border-radius:20px;padding:32px}
         .footer-list{list-style:none;padding:0;margin:16px 0 0}
-        .footer-list li{display:flex;gap:14px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:12px}
+        .footer-list li{display:flex;gap:14px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:12px;font-size:15px}
         @media(max-width:760px){
           .page{padding-left:16px;padding-right:16px}
           .hero-wrap{min-height:720px}
           .nav-links{display:none}
-          .hero-content{padding-top:105px}
-          .search-panel{flex-direction:column;border-radius:18px}
+          .hero-content{padding-top:100px}
+          .search-panel{flex-direction:column;border-radius:14px;padding:12px}
           .search-button{width:100%}
-          .content{margin-top:-28px}
+          .content{margin-top:-32px}
           .intro{display:block}
           .split{grid-template-columns:1fr}
           .stats{grid-template-columns:1fr}
-          .fit-ring{width:74px;height:74px;right:18px;bottom:18px}
-          .town-overlay{padding:26px 22px}
+          .town-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+          .fit-ring{width:76px;height:76px;right:18px;bottom:18px}
+          .town-overlay{padding:24px 20px}
           .town-summary,.expanded{padding-left:20px;padding-right:20px}
           .budget-row{flex-wrap:wrap}
           .count{display:none}
@@ -352,13 +358,13 @@ export default function WhereNext() {
           </nav>
 
           <div className="hero-content">
-            <div className="eyebrow" style={{ color: "rgba(255,255,255,.65)", marginBottom: 18 }}>
+            <div className="eyebrow" style={{ color: "rgba(255,255,255,.65)", marginBottom: 16 }}>
               Your honest relocation scout
             </div>
             <h1 className="hero-title">Find where your next life begins.</h1>
             <p className="hero-copy">
-              
-Describe your ideal life. We'll find the towns you've never considered, show you what your budget really buys, explain why people are moving there, and tell you the trade-offs before you pack a box. 
+              Describe your ideal life. We&apos;ll find the towns you&apos;ve never considered, show you what your
+              budget really buys, explain why people are moving there, and tell you the trade-offs before you pack a box.
             </p>
 
             <div className="search-panel">
@@ -426,9 +432,9 @@ Describe your ideal life. We'll find the towns you've never considered, show you
                   title={US[k]}
                   style={{
                     border: `1px solid ${on ? C.ink : done ? C.pine : C.rule}`,
-                    background: on ? C.ink : done ? "rgba(49,93,72,.08)" : C.paper,
+                    background: on ? C.ink : done ? "rgba(30,77,69,.06)" : C.paper,
                     color: on ? "#fff" : done ? C.pine : C.faint,
-                    fontWeight: done ? 700 : 400,
+                    fontWeight: done ? 600 : 400,
                   }}
                 >
                   {k}
@@ -530,9 +536,9 @@ Describe your ideal life. We'll find the towns you've never considered, show you
               if (!rows.length) return null;
               return (
                 <section key={s} style={{ marginBottom: 42 }}>
-                  <div style={{ borderTop: `4px solid ${STAGE[s].c}`, paddingTop: 14, marginBottom: 20 }}>
-                    <h3 style={{ fontFamily: DISPLAY, fontSize: 32, margin: 0, color: STAGE[s].c }}>{STAGE[s].label}</h3>
-                    <p style={{ color: C.soft, margin: "6px 0 0" }}>{STAGE[s].blurb}</p>
+                  <div style={{ borderTop: `3px solid ${STAGE[s].c}`, paddingTop: 14, marginBottom: 20 }}>
+                    <h3 style={{ fontFamily: DISPLAY, fontSize: 30, margin: 0, color: STAGE[s].c, fontWeight: 600, letterSpacing: "-.02em" }}>{STAGE[s].label}</h3>
+                    <p style={{ color: C.soft, margin: "6px 0 0", fontSize: 15 }}>{STAGE[s].blurb}</p>
                   </div>
                   {rows.map((t) => (
                     <Card
@@ -569,20 +575,134 @@ Describe your ideal life. We'll find the towns you've never considered, show you
   );
 }
 
-function Card({ t, st, rank, score, open, toggle, mark, marks, budget }) {
-  const m = marks[t.id];
-  const stage = STAGE[t.stage] || STAGE.heating;
-  const over = t.price && t.price > budget;
-  const image = t.image || SCENES[t.stage] || SCENES.heating;
+function Icon({ name }) {
+  const props = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.75, strokeLinecap: "round", strokeLinejoin: "round" };
+  switch (name) {
+    case "school":
+      return <svg {...props}><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c0 1 2 3 6 3s6-2 6-3v-5" /></svg>;
+    case "shield":
+      return <svg {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>;
+    case "people":
+      return <svg {...props}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
+    case "income":
+      return <svg {...props}><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>;
+    case "walk":
+      return <svg {...props}><circle cx="13" cy="4" r="2" /><path d="M7 21l3-6 3 2 4-8" /><path d="M10 21h6" /></svg>;
+    case "wifi":
+      return <svg {...props}><path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" y1="20" x2="12.01" y2="20" /></svg>;
+    case "weather":
+      return <svg {...props}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" /></svg>;
+    case "tax":
+      return <svg {...props}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>;
+    default:
+      return null;
+  }
+}
+
+function TownFacts({ t }) {
+  const rows = getTownFactsDisplay(t);
+  return (
+    <div className="town-facts">
+      {rows.map(({ key, label, icon, value, pending }) => (
+        <div key={key} className="fact-item">
+          <div className="fact-head">
+            <span className="fact-icon"><Icon name={icon} /></span>
+            <span className="fact-label">{label}</span>
+          </div>
+          <div className="fact-value" data-pending={pending ? "1" : "0"}>
+            {value}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TownVisual({ town, stateAbbr, stage, rank, score }) {
+  const [src, setSrc] = useState(() => getTownImage(town, stateAbbr));
+  const failedUrls = useRef(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    setSrc(getTownImage(town, stateAbbr));
+    failedUrls.current = new Set();
+
+    (async () => {
+      try {
+        const res = await fetch("/api/images", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            town: { id: town.id, name: town.name, sub: town.sub, image: town.image },
+            stateAbbr,
+          }),
+        });
+        const data = await res.json();
+        if (!cancelled && data.image) setSrc(data.image);
+      } catch {}
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [town.id, town.name, town.sub, town.image, stateAbbr]);
+
+  const resolveFromApi = async (skipUrl) => {
+    try {
+      const res = await fetch("/api/images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          town: { id: town.id, name: town.name, sub: town.sub, image: town.image },
+          stateAbbr,
+          skipUrl,
+        }),
+      });
+      const data = await res.json();
+      if (data.image) {
+        setSrc(data.image);
+        return;
+      }
+    } catch {}
+    setSrc(getTownImageFallback(town, skipUrl, stateAbbr));
+  };
+
+  const handleError = () => {
+    setSrc((prev) => {
+      if (!failedUrls.current.has(prev)) {
+        failedUrls.current.add(prev);
+        resolveFromApi(prev);
+      } else {
+        setSrc(US_FALLBACK_IMAGE);
+      }
+      return prev;
+    });
+  };
+
+  const placeholder = getTownImageChain(town, stateAbbr).at(-1) || US_FALLBACK_IMAGE;
 
   return (
-    <article className="town-card" style={{ borderColor: m === "yes" ? C.pine : C.rule }}>
-      <div className="town-visual" style={{ backgroundImage: `url("${image}")` }}>
+    <div className="town-visual-wrap">
+      <div
+        className="town-visual"
+        style={{
+          backgroundImage: `url("${placeholder}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <img
+          className="town-visual-img"
+          src={src}
+          alt=""
+          decoding="async"
+          onError={handleError}
+        />
         <span className="stage-pill" style={{ background: stage.c }}>{stage.label}</span>
         <div className="town-overlay">
           {rank && <div className="rank">{String(rank).padStart(2, "0")} / BEST MATCHES</div>}
-          <h3 className="town-name">{t.name}</h3>
-          <div className="town-sub">{t.sub}</div>
+          <h3 className="town-name">{town.name}</h3>
+          <div className="town-sub">{town.sub}</div>
         </div>
         {Number.isFinite(score) && (
           <div className="fit-ring">
@@ -593,16 +713,29 @@ function Card({ t, st, rank, score, open, toggle, mark, marks, budget }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function Card({ t, st, rank, score, open, toggle, mark, marks, budget }) {
+  const m = marks[t.id];
+  const stage = STAGE[t.stage] || STAGE.heating;
+  const over = t.price && t.price > budget;
+
+  return (
+    <article className="town-card" style={{ borderColor: m === "yes" ? C.pine : C.rule }}>
+      <TownVisual town={t} stateAbbr={st} stage={stage} rank={rank} score={score} />
 
       <button className="town-summary" onClick={toggle}>
         <p className="hook">{t.hook}</p>
+        <TownFacts t={t} />
         <div className="stats">
           <div className="stat">
             <div className="stat-value" style={{ color: over ? C.rust : C.text }}>{t.priceLabel}</div>
             <div className="stat-label">Typical home</div>
           </div>
           <div className="stat">
-            <div className="stat-value" style={{ fontSize: 20 }}>{t.delta}</div>
+            <div className="stat-value" style={{ fontSize: 19 }}>{t.delta}</div>
             <div className="stat-label">Market direction</div>
           </div>
           <div className="stat">
