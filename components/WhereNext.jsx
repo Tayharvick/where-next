@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { STATES, FINDS, US } from "@/lib/data";
+import { STATE_LISTINGS_PROVIDER, STATE_LISTINGS_URLS } from "@/lib/stateListings";
 import { HERO_IMAGE, getTownImageChain, getTownImageFallback, isModernHeroPhoto, isValidImageUrl, US_FALLBACK_IMAGE } from "@/lib/images";
 import { getTownFactsDisplay } from "@/lib/townFacts";
 
@@ -96,6 +97,10 @@ function apiErrorMessage(data, status) {
 function isValidSearchResult(data) {
   return Boolean(data && Array.isArray(data.towns) && data.towns.length > 0);
 }
+
+const STATE_LIST = Object.entries(US)
+  .map(([abbr, name]) => ({ abbr, name, url: STATE_LISTINGS_URLS[abbr] }))
+  .sort((a, b) => a.name.localeCompare(b.name));
 
 export default function WhereNext() {
   const [tab, setTab] = useState("search");
@@ -326,6 +331,16 @@ export default function WhereNext() {
         .intro{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;margin:48px 0 28px}
         .intro-title{font-family:${DISPLAY};font-size:clamp(32px,4.5vw,52px);line-height:1.08;letter-spacing:-.03em;margin:0;max-width:780px;font-weight:600}
         .intro-copy{color:${C.soft};font-size:16px;line-height:1.65;max-width:640px;margin:12px 0 0}
+        .state-explore{margin-top:64px;padding-top:48px;border-top:1px solid ${C.rule}}
+        .state-explore-title{font-family:${DISPLAY};font-size:clamp(24px,3vw,32px);line-height:1.15;letter-spacing:-.03em;margin:0 0 12px;font-weight:600}
+        .state-explore-copy{color:${C.soft};font-size:15px;line-height:1.65;max-width:640px;margin:0 0 28px}
+        .state-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
+        .state-card{display:block;border:1px solid ${C.rule};background:${C.paper};border-radius:14px;padding:16px 18px;text-align:left;text-decoration:none;color:inherit;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .2s}
+        .state-card:hover{border-color:${C.faint};box-shadow:0 4px 16px rgba(0,0,0,.05);transform:translateY(-2px)}
+        .state-card-name{font-family:${DISPLAY};font-size:18px;line-height:1.2;font-weight:600;letter-spacing:-.02em;margin:0 0 6px;color:${C.ink}}
+        .state-card-abbr{font-family:${MONO};font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${C.faint}}
+        .state-card-external{display:flex;align-items:center;gap:5px;margin-top:12px;font-family:${MONO};font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:${C.soft}}
+        .state-card-external-icon{font-size:12px;line-height:1;opacity:.75}
         .budget-card{background:${C.paper};border:1px solid ${C.rule};border-radius:16px;padding:20px 22px;margin-bottom:28px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
         .budget-row{display:flex;align-items:center;gap:18px}
         .budget-value{font-family:${DISPLAY};font-size:26px;min-width:90px;text-align:right;font-weight:600;letter-spacing:-.02em}
@@ -582,15 +597,42 @@ export default function WhereNext() {
         </div>
 
         {isSearch && !search && !busy && (
-          <div className="intro">
-            <div>
-              <h2 className="intro-title">Not another “best places to live” list.</h2>
-              <p className="intro-copy">
-                Say what you actually want. Where Next will find five towns that fit, explain why they are changing,
-                and tell you exactly what is wrong with each one.
-              </p>
+          <>
+            <div className="intro">
+              <div>
+                <h2 className="intro-title">Not another “best places to live” list.</h2>
+                <p className="intro-copy">
+                  Say what you actually want. Where Next will find five towns that fit, explain why they are changing,
+                  and tell you exactly what is wrong with each one.
+                </p>
+              </div>
             </div>
-          </div>
+
+            <section className="state-explore">
+              <h2 className="state-explore-title">Explore by State</h2>
+              <p className="state-explore-copy">
+                Already know where you want to look? Browse homes for sale on {STATE_LISTINGS_PROVIDER} by state.
+              </p>
+              <div className="state-grid">
+                {STATE_LIST.map(({ abbr, name, url }) => (
+                  <a
+                    key={abbr}
+                    className="state-card"
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <div className="state-card-name">{name}</div>
+                    <div className="state-card-abbr">{abbr}</div>
+                    <div className="state-card-external">
+                      <span className="state-card-external-icon" aria-hidden="true">↗</span>
+                      <span>Opens {STATE_LISTINGS_PROVIDER}</span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </section>
+          </>
         )}
 
         {isSearch && S && (
