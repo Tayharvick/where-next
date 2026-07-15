@@ -2,35 +2,36 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { STATES, FINDS, US } from "@/lib/data";
-import { STATE_LISTINGS_PROVIDER, STATE_LISTINGS_URLS } from "@/lib/stateListings";
+import { getStateListingsUrl } from "@/lib/stateListings";
 import { HERO_IMAGE, getTownImageChain, getTownImageFallback, isModernHeroPhoto, isValidImageUrl, US_FALLBACK_IMAGE } from "@/lib/images";
 import { getTownFactsDisplay } from "@/lib/townFacts";
 
 const KEY = "where-next:v7";
 
 const C = {
-  ink: "#1A1A1A",
-  charcoal: "#2D2D2D",
-  cream: "#FAFAF8",
+  ink: "#2C2C2C",
+  charcoal: "#2C2C2C",
+  cream: "#F9F7F4",
   paper: "#FFFFFF",
   card: "#FFFFFF",
-  text: "#1A1A1A",
-  soft: "#717171",
-  faint: "#B0B0B0",
-  rule: "rgba(0,0,0,0.08)",
+  text: "#2C2C2C",
+  soft: "#6B6B6B",
+  faint: "#A8A8A8",
+  rule: "rgba(0,0,0,0.06)",
   pine: "#1E4D45",
-  sage: "#3D6B62",
+  sage: "#5C6B5A",
+  olive: "#5C6B5A",
   amber: "#C17F3A",
   rust: "#B84A3A",
   gold: "#C9A962",
-  accent: "#1E4D45",
+  accent: "#5C6B5A",
 };
 
 const REPORT_LABEL = "#5C5C5C";
 const REPORT_BODY = "#2D2D2D";
 
-const DISPLAY = "-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif";
-const BODY = "-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif";
+const DISPLAY = "var(--font-display),Georgia,'Times New Roman',serif";
+const BODY = "var(--font-body),system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 const MONO = "ui-monospace,'SF Mono',Menlo,Consolas,monospace";
 
 const STAGE = {
@@ -65,11 +66,59 @@ const SCOUT_EDITORIAL = {
   hoschton: { headline: "When Atlanta's sprawl reaches the village.", cta: "Why Hoschton? →" },
 };
 
-const EXAMPLES = [
-  "Small town, near a beach, near Disney, $400k",
-  "Mountains, lakes, small town",
-  "College town, walkable, no car needed",
-  "Warm, low taxes, good hospital, retiring soon",
+const LIFESTYLE_CHIPS = [
+  "Beach Town",
+  "Mountains",
+  "Lake Life",
+  "Historic Downtown",
+  "Walkable",
+  "College Town",
+  "Dog Friendly",
+  "Wine Country",
+  "Small Town",
+  "Near National Parks",
+];
+
+const WHY_WHERE_NEXT = [
+  {
+    title: "Researched like a local",
+    copy: "We read the listings, scan the news, and check what's actually changing — not just what a ranking site says.",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" />
+        <path d="M20 20l-3.5-3.5" />
+      </svg>
+    ),
+  },
+  {
+    title: "The good, the bad, the catch",
+    copy: "Every town gets the honest version — what's drawing people, what's wrong, and what nobody mentions until after you've moved.",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <path d="M4 6h16M4 12h16M4 18h10" />
+      </svg>
+    ),
+  },
+  {
+    title: "What your money actually buys",
+    copy: "Median prices are a starting point. We show what your budget gets you in each town — house, land, and trade-offs included.",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <path d="M3 9l9-6 9 6v11H3V9z" />
+        <path d="M9 20V12h6v8" />
+      </svg>
+    ),
+  },
+  {
+    title: "Are you still early?",
+    copy: "Some towns are cheap because nobody's looking. Others are already hot. We tell you which window you're in.",
+    icon: (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    ),
+  },
 ];
 
 const LOADING_STEPS = [
@@ -99,7 +148,7 @@ function isValidSearchResult(data) {
 }
 
 const STATE_LIST = Object.entries(US)
-  .map(([abbr, name]) => ({ abbr, name, url: STATE_LISTINGS_URLS[abbr] }))
+  .map(([abbr, name]) => ({ abbr, name }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
 export default function WhereNext() {
@@ -111,6 +160,7 @@ export default function WhereNext() {
   const [search, setSearch] = useState(null);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(null);
+  const [browseState, setBrowseState] = useState(null);
   const [tuning, setTuning] = useState(false);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
@@ -155,6 +205,7 @@ export default function WhereNext() {
   const ALL_STATES = useMemo(() => ({ ...STATES, ...found }), [found]);
   const isSearch = tab === "search";
   const isFind = tab === "find";
+  const isStates = tab === "states";
   const S = isSearch ? search : null;
   const key = "__search";
 
@@ -183,6 +234,7 @@ export default function WhereNext() {
   const go = (t) => {
     setTab(t);
     setOpen(null);
+    setBrowseState(null);
     setErr("");
   };
 
@@ -280,13 +332,26 @@ export default function WhereNext() {
   );
 
   const scoutPub = useMemo(() => getScoutPublication(), []);
+  const homepageFeaturedFind = useMemo(
+    () => getFeaturedFind(hiddenFindsFlat),
+    [hiddenFindsFlat]
+  );
   const featuredFind = hiddenFindsFlat[0] || null;
   const restFinds = hiddenFindsFlat.slice(1);
   const openFind = hiddenFindsFlat.find((t) => open === t.id + t.st) || null;
 
+  const stateTowns = useMemo(() => {
+    if (!browseState) return [];
+    return ALL_STATES[browseState]?.towns || [];
+  }, [browseState, ALL_STATES]);
+
+  const browseStateName = browseState ? US[browseState] || browseState : "";
+  const browseStateListingsUrl = browseState ? getStateListingsUrl(browseState) : null;
+  const openStateTown = stateTowns.find((t) => open === t.id + browseState) || null;
+
   const shortlist = everyTown.filter((t) => marks[t.id] === "yes");
 
-  if (!ready) return <div style={{ background: C.ink, minHeight: "100vh" }} />;
+  if (!ready) return <div style={{ background: C.cream, minHeight: "100vh" }} />;
 
   return (
     <div className="app-shell">
@@ -298,49 +363,110 @@ export default function WhereNext() {
         .app-shell{font-family:${BODY};background:${C.cream};min-height:100vh;color:${C.text};-webkit-font-smoothing:antialiased}
         .page{max-width:1180px;margin:0 auto;padding-left:24px;padding-right:24px}
         .eyebrow{font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};font-weight:500}
-        .hero-wrap{position:relative;min-height:690px;color:#fff;background-image:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.55)),url("${HERO_IMAGE}");background-size:cover;background-position:center}
-        .hero-wrap:after{content:"";position:absolute;left:0;right:0;bottom:0;height:140px;background:linear-gradient(transparent,${C.cream})}
-        .nav{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding-top:28px}
-        .brand{font-family:${DISPLAY};font-size:26px;font-weight:600;letter-spacing:-.03em}
-        .nav-links{display:flex;gap:28px;align-items:center}
-        .nav-link{background:transparent;border:0;color:rgba(255,255,255,.75);cursor:pointer;font-size:14px;padding:8px 0;font-weight:500;transition:color .2s}
+        .hero-wrap{position:relative;min-height:100vh;color:#fff;background-color:#1c1916;background-image:linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.35)),linear-gradient(180deg,rgba(0,0,0,.2) 0%,rgba(0,0,0,.12) 45%,rgba(0,0,0,.28) 100%),url("${HERO_IMAGE}");background-size:cover;background-position:center 42%}
+        .hero-wrap:after{content:"";position:absolute;left:0;right:0;bottom:0;height:140px;background:linear-gradient(transparent,${C.cream});pointer-events:none}
+        .nav{position:relative;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;padding-top:32px;gap:24px}
+        .brand-block{display:flex;flex-direction:column;gap:4px}
+        .brand{font-family:${DISPLAY};font-size:15px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#fff}
+        .brand-sub{font-family:${BODY};font-size:12px;letter-spacing:.04em;color:rgba(255,255,255,.55);font-weight:400}
+        .nav-links{display:flex;gap:32px;align-items:center;padding-top:2px}
+        .nav-link{background:transparent;border:0;color:rgba(255,255,255,.65);cursor:pointer;font-size:13px;padding:6px 0;font-weight:500;letter-spacing:.02em;transition:color .2s}
         .nav-link:hover{color:#fff}
-        .nav-link[data-on="1"]{color:#fff;border-bottom:2px solid #fff}
-        .hero-content{position:relative;z-index:2;max-width:900px;padding-top:112px}
-        .hero-title{font-family:${DISPLAY};font-size:clamp(48px,7vw,88px);line-height:1.02;letter-spacing:-.04em;margin:0;max-width:900px;text-wrap:balance;font-weight:600}
-        .hero-copy{font-size:17px;line-height:1.65;color:rgba(255,255,255,.82);max-width:620px;margin:22px 0 0;font-weight:400}
-        .search-panel{margin-top:40px;background:rgba(255,255,255,.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.6);border-radius:16px;padding:8px 8px 8px 20px;display:flex;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);max-width:720px}
-        .search-input{flex:1;min-width:0;border:0;background:transparent;color:${C.text};font-size:16px;padding:14px 0;outline:none}
+        .nav-link[data-on="1"]{color:#fff;border-bottom:1px solid rgba(255,255,255,.7)}
+        .hero-content{position:relative;z-index:2;max-width:700px;margin:0 auto;text-align:center;padding-top:clamp(72px,12vh,128px);padding-bottom:56px}
+        .hero-title{font-family:${DISPLAY};font-size:clamp(47px,6.5vw,83px);line-height:1.04;letter-spacing:-.03em;margin:0;font-weight:400;text-wrap:balance}
+        .hero-copy{font-family:${BODY};font-size:clamp(14px,1.55vw,16px);line-height:1.8;color:rgba(255,255,255,.68);max-width:480px;margin:40px auto 0;font-weight:400;letter-spacing:.015em}
+        .search-panel{margin:52px auto 0;background:#fff;backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid rgba(255,255,255,.85);border-radius:100px;padding:12px 12px 12px 36px;display:flex;gap:12px;box-shadow:0 32px 80px rgba(0,0,0,.22),0 12px 32px rgba(0,0,0,.12);max-width:600px}
+        .search-input{flex:1;min-width:0;border:0;background:transparent;color:${C.text};font-size:18px;padding:20px 0;outline:none;letter-spacing:.01em}
         .search-input::placeholder{color:${C.faint}}
-        .search-button{border:0;background:${C.ink};color:#fff;border-radius:12px;padding:14px 22px;font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap;transition:background .2s,transform .15s}
-        .search-button:hover{background:${C.charcoal}}
+        .search-button{border:0;background:${C.charcoal};color:#fff;border-radius:100px;padding:20px 38px;font-weight:500;font-size:16px;cursor:pointer;white-space:nowrap;letter-spacing:.02em;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+        .search-button:hover{background:#1a1a1a}
         .search-button:active{transform:scale(.98)}
         .search-button:disabled{opacity:.45;cursor:default;transform:none}
-        .search-error{margin-top:14px;color:#FFD1C4;font-size:14px;line-height:1.55;max-width:720px}
-        .examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
-        .example{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);border-radius:999px;padding:8px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:background .2s}
-        .example:hover{background:rgba(255,255,255,.2)}
-        .loading{margin-top:22px;display:flex;align-items:center;gap:12px;color:#fff;font-size:14px}
+        .search-error{margin-top:18px;color:#FFD1C4;font-size:14px;line-height:1.55;max-width:600px;margin-left:auto;margin-right:auto}
+        .lifestyle-chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:36px;max-width:720px;margin-left:auto;margin-right:auto}
+        .lifestyle-chip{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:rgba(255,255,255,.88);border-radius:999px;padding:9px 16px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:background .2s,border-color .2s;font-weight:400}
+        .lifestyle-chip:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.35)}
+        .loading{margin-top:22px;display:flex;align-items:center;justify-content:center;gap:12px;color:#fff;font-size:14px}
         .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
         @keyframes spin{to{transform:rotate(360deg)}}
-        .content{position:relative;z-index:3;margin-top:-48px;padding-bottom:100px}
-        .toolbar{background:${C.paper};border:1px solid ${C.rule};border-radius:14px;padding:6px;box-shadow:0 1px 3px rgba(0,0,0,.04);display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-        .tab{border:0;background:transparent;color:${C.soft};border-radius:10px;padding:10px 16px;font-size:14px;cursor:pointer;font-weight:500;transition:background .2s,color .2s}
-        .tab[data-on="1"]{background:${C.ink};color:#fff}
+        .content{position:relative;z-index:3;margin-top:-56px;padding-bottom:120px}
+        .toolbar{background:${C.paper};border:1px solid ${C.rule};border-radius:999px;padding:5px;box-shadow:0 2px 12px rgba(0,0,0,.04);display:flex;align-items:center;gap:2px;flex-wrap:wrap}
+        .tab{flex:1;border:0;background:transparent;color:${C.soft};border-radius:999px;padding:12px 20px;font-size:13px;cursor:pointer;font-weight:500;letter-spacing:.01em;transition:background .25s,color .25s,box-shadow .25s;min-width:0;text-align:center}
+        .tab[data-on="1"]{background:${C.charcoal};color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+        .tab:hover:not([data-on="1"]){color:${C.text}}
         .count{margin-left:auto;font-family:${MONO};font-size:11px;color:${C.faint};padding:0 12px}
-        .intro{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;margin:48px 0 28px}
-        .intro-title{font-family:${DISPLAY};font-size:clamp(32px,4.5vw,52px);line-height:1.08;letter-spacing:-.03em;margin:0;max-width:780px;font-weight:600}
-        .intro-copy{color:${C.soft};font-size:16px;line-height:1.65;max-width:640px;margin:12px 0 0}
-        .state-explore{margin-top:64px;padding-top:48px;border-top:1px solid ${C.rule}}
-        .state-explore-title{font-family:${DISPLAY};font-size:clamp(24px,3vw,32px);line-height:1.15;letter-spacing:-.03em;margin:0 0 12px;font-weight:600}
-        .state-explore-copy{color:${C.soft};font-size:15px;line-height:1.65;max-width:640px;margin:0 0 28px}
-        .state-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
-        .state-card{display:block;border:1px solid ${C.rule};background:${C.paper};border-radius:14px;padding:16px 18px;text-align:left;text-decoration:none;color:inherit;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .2s}
-        .state-card:hover{border-color:${C.faint};box-shadow:0 4px 16px rgba(0,0,0,.05);transform:translateY(-2px)}
-        .state-card-name{font-family:${DISPLAY};font-size:18px;line-height:1.2;font-weight:600;letter-spacing:-.02em;margin:0 0 6px;color:${C.ink}}
+        .home-section{margin:80px 0;animation:fadeInUp .7s ease both}
+        .home-section:nth-child(2){animation-delay:.08s}
+        .home-section:nth-child(3){animation-delay:.16s}
+        .home-section:nth-child(4){animation-delay:.24s}
+        .home-section:nth-child(5){animation-delay:.32s}
+        @keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .section-eyebrow{font-family:${MONO};font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${C.olive};font-weight:500;margin-bottom:16px}
+        .intro{display:block;margin:0}
+        .intro:not(.home-section){margin:48px 0 28px}
+        .intro-title{font-family:${DISPLAY};font-size:clamp(32px,4.5vw,52px);line-height:1.12;letter-spacing:-.02em;margin:0;max-width:720px;font-weight:500}
+        .intro-copy{color:${C.soft};font-size:17px;line-height:1.75;max-width:600px;margin:20px 0 0}
+        .landing .intro .intro-title{max-width:100%;font-size:clamp(30px,3.75vw,48px);letter-spacing:-.025em;margin:0 0 40px}
+        .landing .intro .intro-copy{max-width:680px;margin:0}
+        .why-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}
+        .why-card{background:${C.paper};border:1px solid ${C.rule};border-radius:20px;padding:32px 28px;transition:border-color .25s,box-shadow .25s,transform .25s}
+        .why-card:hover{border-color:rgba(92,107,90,.25);box-shadow:0 8px 28px rgba(0,0,0,.05);transform:translateY(-2px)}
+        .why-icon{color:${C.olive};margin-bottom:20px;display:flex}
+        .why-title{font-family:${DISPLAY};font-size:20px;line-height:1.3;letter-spacing:-.01em;margin:0 0 12px;font-weight:500;color:${C.text}}
+        .why-copy{font-size:14px;line-height:1.7;color:${C.soft};margin:0}
+        .landing{padding-bottom:100px}
+        .landing .home-section:first-child{margin-top:72px}
+        .finds-preview-cta{display:inline-flex;margin-top:40px;border:0;background:${C.charcoal};color:#fff;border-radius:14px;padding:16px 32px;font-size:15px;font-weight:500;letter-spacing:.02em;cursor:pointer;transition:background .2s,box-shadow .2s;box-shadow:0 4px 16px rgba(0,0,0,.1);font-family:${BODY}}
+        .finds-preview-cta:hover{background:#1a1a1a;box-shadow:0 6px 24px rgba(0,0,0,.14)}
+        .home-section-featured{margin:80px 0}
+        .featured-scout{background:${C.paper};border:1px solid ${C.rule};border-radius:28px;overflow:hidden;box-shadow:0 12px 56px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.03);transition:box-shadow .4s ease}
+        .featured-scout:hover{box-shadow:0 20px 72px rgba(0,0,0,.09),0 4px 16px rgba(0,0,0,.04)}
+        .featured-scout-layout{display:grid;grid-template-columns:1.25fr 1fr;min-height:min(520px,52vh)}
+        .featured-scout-visual{position:relative;min-height:360px;background:#2a2a2a;overflow:hidden}
+        .featured-scout-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;transition:transform .8s ease}
+        .featured-scout:hover .featured-scout-img{transform:scale(1.03)}
+        .featured-scout-body{padding:clamp(36px,5vw,56px) clamp(32px,4vw,52px);display:flex;flex-direction:column;justify-content:center}
+        .featured-scout-badge{display:inline-block;align-self:flex-start;font-family:${MONO};font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:${C.olive};border:1px solid rgba(92,107,90,.25);background:rgba(92,107,90,.06);border-radius:999px;padding:7px 14px;font-weight:600;margin-bottom:28px}
+        .featured-scout-name{font-family:${DISPLAY};font-size:clamp(40px,5vw,64px);line-height:1.04;letter-spacing:-.03em;margin:0;font-weight:400}
+        .featured-scout-location{font-family:${MONO};font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};margin:12px 0 0;font-weight:500}
+        .featured-scout-deck{font-size:clamp(16px,1.8vw,18px);line-height:1.75;color:${C.soft};margin:28px 0 0;max-width:440px}
+        .featured-scout-btn{align-self:flex-start;margin-top:36px;border:0;background:${C.charcoal};color:#fff;border-radius:14px;padding:18px 36px;font-size:15px;font-weight:500;letter-spacing:.02em;cursor:pointer;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 4px 16px rgba(0,0,0,.12);font-family:${BODY}}
+        .featured-scout-btn:hover{background:#1a1a1a;box-shadow:0 6px 24px rgba(0,0,0,.16)}
+        .featured-scout-btn:active{transform:scale(.98)}
+        .featured-scout-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid ${C.rule};background:${C.cream}}
+        .featured-scout-stat{padding:28px 32px;border-right:1px solid ${C.rule}}
+        .featured-scout-stat:last-child{border-right:0}
+        .featured-scout-stat-label{font-family:${MONO};font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};margin-bottom:10px;font-weight:500}
+        .featured-scout-stat-value{font-family:${DISPLAY};font-size:clamp(17px,1.8vw,20px);line-height:1.35;font-weight:400;color:${C.text};letter-spacing:-.015em}
+        .finds-preview-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:36px}
+        .finds-preview-title{font-family:${DISPLAY};font-size:clamp(28px,3.5vw,36px);line-height:1.15;letter-spacing:-.02em;margin:0;font-weight:500}
+        .finds-preview-link{border:0;background:transparent;color:${C.olive};font-size:14px;font-weight:500;cursor:pointer;padding:0;transition:color .2s;white-space:nowrap}
+        .finds-preview-link:hover{color:${C.charcoal}}
+        .finds-preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+        .finds-preview-card{display:flex;flex-direction:column;border:0;background:transparent;padding:0;cursor:pointer;text-align:left;transition:transform .3s}
+        .finds-preview-card:hover{transform:translateY(-3px)}
+        .finds-preview-visual{position:relative;aspect-ratio:4/3;border-radius:18px;overflow:hidden;background:#2a2a2a;margin-bottom:18px;box-shadow:0 2px 16px rgba(0,0,0,.05);transition:box-shadow .3s}
+        .finds-preview-card:hover .finds-preview-visual{box-shadow:0 10px 32px rgba(0,0,0,.1)}
+        .finds-preview-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .6s ease}
+        .finds-preview-card:hover .finds-preview-img{transform:scale(1.03)}
+        .finds-preview-stage{position:absolute;top:14px;left:14px;z-index:1;border-radius:999px;color:#fff;padding:6px 11px;font-family:${MONO};font-size:8px;letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+        .finds-preview-name{font-family:${DISPLAY};font-size:22px;letter-spacing:-.02em;margin:0 0 6px;font-weight:500;line-height:1.15}
+        .finds-preview-sub{font-family:${MONO};font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:${C.faint};margin-bottom:8px}
+        .finds-preview-hook{font-size:14px;line-height:1.6;color:${C.soft};margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .state-explore{margin:56px 0 32px}
+        .state-explore-title{font-family:${DISPLAY};font-size:clamp(28px,3.5vw,36px);line-height:1.15;letter-spacing:-.02em;margin:0 0 32px;font-weight:500}
+        .state-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:14px}
+        .state-card{display:block;border:1px solid ${C.rule};background:${C.paper};border-radius:16px;padding:18px 20px;text-align:left;color:inherit;cursor:pointer;transition:border-color .25s,box-shadow .25s,transform .25s;width:100%;font:inherit}
+        .state-card:hover{border-color:rgba(92,107,90,.3);box-shadow:0 6px 20px rgba(0,0,0,.05);transform:translateY(-2px)}
+        .state-card-name{font-family:${DISPLAY};font-size:18px;line-height:1.2;font-weight:500;letter-spacing:-.01em;margin:0 0 6px;color:${C.text}}
         .state-card-abbr{font-family:${MONO};font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${C.faint}}
-        .state-card-external{display:flex;align-items:center;gap:5px;margin-top:12px;font-family:${MONO};font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:${C.soft}}
-        .state-card-external-icon{font-size:12px;line-height:1;opacity:.75}
+        .state-back{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:${C.soft};font-size:14px;font-weight:500;cursor:pointer;padding:0;margin:56px 0 24px;transition:color .2s}
+        .state-back:hover{color:${C.text}}
+        .state-detail-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:32px}
+        .state-listings-btn{display:inline-block;border:1px solid ${C.rule};background:${C.paper};color:${C.text};text-decoration:none;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:500;transition:border-color .25s,background .25s,box-shadow .25s}
+        .state-listings-btn:hover{border-color:rgba(92,107,90,.3);background:${C.cream};box-shadow:0 4px 16px rgba(0,0,0,.04)}
+        .state-empty{color:${C.soft};font-size:16px;line-height:1.65;margin:0}
         .budget-card{background:${C.paper};border:1px solid ${C.rule};border-radius:16px;padding:20px 22px;margin-bottom:28px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
         .budget-row{display:flex;align-items:center;gap:18px}
         .budget-value{font-family:${DISPLAY};font-size:26px;min-width:90px;text-align:right;font-weight:600;letter-spacing:-.02em}
@@ -501,13 +627,33 @@ export default function WhereNext() {
         .footer-list li{display:flex;gap:14px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:12px;font-size:15px}
         @media(max-width:760px){
           .page{padding-left:16px;padding-right:16px}
-          .hero-wrap{min-height:720px}
+          .hero-wrap{min-height:100vh;background-position:center 38%}
           .nav-links{display:none}
-          .hero-content{padding-top:100px}
-          .search-panel{flex-direction:column;border-radius:14px;padding:12px}
-          .search-button{width:100%}
-          .content{margin-top:-32px}
-          .intro{display:block}
+          .hero-content{padding-top:88px;padding-bottom:40px}
+          .hero-title{font-size:clamp(36px,9vw,47px)}
+          .hero-copy{margin-top:28px;font-size:14px}
+          .search-panel{flex-direction:column;border-radius:28px;padding:14px;max-width:100%;margin-top:40px}
+          .search-input{padding:14px 4px;text-align:center}
+          .search-button{width:100%;border-radius:16px;padding:16px 28px}
+          .lifestyle-chips{gap:6px}
+          .lifestyle-chip{font-size:12px;padding:8px 12px}
+          .content{margin-top:-40px}
+          .toolbar{border-radius:16px}
+          .tab{padding:10px 12px;font-size:12px}
+          .home-section{margin:56px 0}
+          .why-grid{grid-template-columns:1fr;gap:14px}
+          .home-section-featured{margin:40px 0 64px}
+          .featured-scout-layout{grid-template-columns:1fr;min-height:0}
+          .featured-scout-visual{min-height:280px}
+          .featured-scout-body{padding:32px 24px 36px}
+          .featured-scout-btn{width:100%;max-width:none;text-align:center}
+          .featured-scout-stats{grid-template-columns:1fr 1fr}
+          .featured-scout-stat{padding:20px 24px}
+          .featured-scout-stat:nth-child(2){border-right:0}
+          .featured-scout-stat:nth-child(1),.featured-scout-stat:nth-child(2){border-bottom:1px solid ${C.rule}}
+          .featured-scout-stat:nth-child(odd){border-right:1px solid ${C.rule}}
+          .finds-preview-grid{grid-template-columns:1fr;gap:24px}
+          .finds-preview-head{flex-direction:column;align-items:flex-start}
           .split{grid-template-columns:1fr}
           .stats{grid-template-columns:1fr}
           .town-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -527,26 +673,33 @@ export default function WhereNext() {
           .town-summary,.expanded{padding-left:20px;padding-right:20px}
           .budget-row{flex-wrap:wrap}
         }
+        @media(min-width:761px) and (max-width:1024px){
+          .why-grid{grid-template-columns:repeat(2,1fr)}
+          .finds-preview-grid{grid-template-columns:repeat(2,1fr)}
+          .featured-scout-stats{grid-template-columns:repeat(2,1fr)}
+          .featured-scout-stat:nth-child(2){border-right:0}
+          .featured-scout-stat:nth-child(1),.featured-scout-stat:nth-child(2){border-bottom:1px solid ${C.rule}}
+        }
       `}</style>
 
       <section className="hero-wrap">
         <div className="page">
           <nav className="nav">
-            <div className="brand">Where Next</div>
+            <div className="brand-block">
+              <div className="brand">Where Next</div>
+              <div className="brand-sub">A Relocation Scout</div>
+            </div>
             <div className="nav-links">
-              <button className="nav-link" data-on={isSearch ? "1" : "0"} onClick={() => go("search")}>Discover</button>
-              <button className="nav-link" data-on={isFind ? "1" : "0"} onClick={() => go("find")}>Hidden finds</button>
+              <button className="nav-link" data-on={isSearch ? "1" : "0"} onClick={() => go("search")}>Your Search</button>
+              <button className="nav-link" data-on={isFind ? "1" : "0"} onClick={() => go("find")}>Hidden Finds</button>
             </div>
           </nav>
 
           <div className="hero-content">
-            <div className="eyebrow" style={{ color: "rgba(255,255,255,.65)", marginBottom: 16 }}>
-              Your honest relocation scout
-            </div>
             <h1 className="hero-title">Find where your next life begins.</h1>
             <p className="hero-copy">
-              Describe your ideal life. We&apos;ll find the towns you&apos;ve never considered, show you what your
-              budget really buys, explain why people are moving there, and tell you the trade-offs before you pack a box.
+              Describe your ideal life. We&apos;ll find towns you&apos;ve probably never considered, explain why people are
+              moving there, show what your budget really buys, and tell you the trade-offs before you pack a box.
             </p>
 
             <div className="search-panel">
@@ -566,7 +719,7 @@ export default function WhereNext() {
                 placeholder="Mountains, lakes, small town, under $400k..."
               />
               <button className="search-button" disabled={!!busy || !q.trim()} onClick={runSearch}>
-                {busy === "search" ? "Searching..." : "Find my towns"}
+                {busy === "search" ? "Searching..." : "Find My Towns"}
               </button>
             </div>
 
@@ -574,10 +727,18 @@ export default function WhereNext() {
               <p className="search-error" role="alert">{err}</p>
             )}
 
-            <div className="examples">
-              {EXAMPLES.map((e) => (
-                <button key={e} className="example" onClick={() => setQ(e)}>{e}</button>
+            <div className="lifestyle-chips">
+              {LIFESTYLE_CHIPS.map((chip) => (
+                <button key={chip} type="button" className="lifestyle-chip" onClick={() => setQ(chip)}>
+                  {chip}
+                </button>
               ))}
+            </div>
+
+            <div className="toolbar">
+              <button className="tab" data-on={isSearch ? "1" : "0"} onClick={() => go("search")}>Your Search</button>
+              <button className="tab" data-on={isFind ? "1" : "0"} onClick={() => go("find")}>Hidden Finds</button>
+              <button className="tab" data-on={isStates ? "1" : "0"} onClick={() => go("states")}>Explore by State</button>
             </div>
 
             {busy === "search" && (
@@ -590,51 +751,55 @@ export default function WhereNext() {
         </div>
       </section>
 
-      <main className="page content">
-        <div className="toolbar">
-          <button className="tab" data-on={isSearch ? "1" : "0"} onClick={() => go("search")}>Your search</button>
-          <button className="tab" data-on={isFind ? "1" : "0"} onClick={() => go("find")}>Hidden Finds</button>
-        </div>
+      {isSearch && !search && !busy && (
+        <div className="page landing">
+          <section className="home-section intro">
+            <div className="section-eyebrow">Why Where Next</div>
+            <h2 className="intro-title">Not another &ldquo;Best Places to Live&rdquo; list.</h2>
+            <p className="intro-copy">
+              Every town has a story. We dig deeper than rankings and cost-of-living charts to uncover what actually
+              matters: why people are moving there, what your money buys, what&apos;s changing, and what nobody tells
+              you until after you&apos;ve moved.
+            </p>
+          </section>
 
-        {isSearch && !search && !busy && (
-          <>
-            <div className="intro">
-              <div>
-                <h2 className="intro-title">Not another “best places to live” list.</h2>
-                <p className="intro-copy">
-                  Say what you actually want. Where Next will find five towns that fit, explain why they are changing,
-                  and tell you exactly what is wrong with each one.
-                </p>
-              </div>
+          <section className="home-section home-section-featured">
+            {homepageFeaturedFind && (
+              <FeaturedScoutTeaser
+                town={homepageFeaturedFind}
+                st={homepageFeaturedFind.st}
+                onRead={() => {
+                  go("find");
+                  setOpen(homepageFeaturedFind.id + homepageFeaturedFind.st);
+                }}
+              />
+            )}
+          </section>
+
+          <section className="home-section">
+            <h2 className="finds-preview-title">Hidden Finds</h2>
+            <div className="finds-preview-grid">
+              {hiddenFindsFlat.slice(0, 4).map((t, i) => (
+                <FindPreviewCard
+                  key={t.id + t.st}
+                  town={t}
+                  st={t.st}
+                  loadDelay={i * 300}
+                  onOpen={() => {
+                    go("find");
+                    setOpen(t.id + t.st);
+                  }}
+                />
+              ))}
             </div>
+            <button type="button" className="finds-preview-cta" onClick={() => go("find")}>
+              See all Hidden Finds →
+            </button>
+          </section>
+        </div>
+      )}
 
-            <section className="state-explore">
-              <h2 className="state-explore-title">Explore by State</h2>
-              <p className="state-explore-copy">
-                Already know where you want to look? Browse homes for sale on {STATE_LISTINGS_PROVIDER} by state.
-              </p>
-              <div className="state-grid">
-                {STATE_LIST.map(({ abbr, name, url }) => (
-                  <a
-                    key={abbr}
-                    className="state-card"
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <div className="state-card-name">{name}</div>
-                    <div className="state-card-abbr">{abbr}</div>
-                    <div className="state-card-external">
-                      <span className="state-card-external-icon" aria-hidden="true">↗</span>
-                      <span>Opens {STATE_LISTINGS_PROVIDER}</span>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </section>
-          </>
-        )}
-
+      <main className="page content">
         {isSearch && S && (
           <>
             <div className="intro">
@@ -759,6 +924,91 @@ export default function WhereNext() {
                       ))}
                     </div>
                   </>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {isStates && (
+          <>
+            {!browseState ? (
+              <StateExploreGrid
+                onSelectState={(abbr) => {
+                  setBrowseState(abbr);
+                  setOpen(null);
+                }}
+              />
+            ) : openStateTown ? (
+              <>
+                <button
+                  type="button"
+                  className="state-back"
+                  onClick={() => {
+                    setBrowseState(null);
+                    setOpen(null);
+                  }}
+                >
+                  ← Back to all states
+                </button>
+                <Card
+                  key={openStateTown.id + browseState}
+                  t={openStateTown}
+                  st={browseState}
+                  townKey={openStateTown.id + browseState}
+                  peerTowns={stateTowns.map((town) => ({ ...town, st: browseState }))}
+                  open
+                  toggle={() => setOpen(null)}
+                  onNavigate={(key) => setOpen(key)}
+                  mark={mark}
+                  marks={marks}
+                  budget={budget}
+                />
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="state-back"
+                  onClick={() => {
+                    setBrowseState(null);
+                    setOpen(null);
+                  }}
+                >
+                  ← Back to all states
+                </button>
+                <div className="state-detail-head">
+                  <h2 className="state-explore-title" style={{ margin: 0 }}>{browseStateName}</h2>
+                  {browseStateListingsUrl && (
+                    <a
+                      className="state-listings-btn"
+                      href={browseStateListingsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View homes in {browseStateName} →
+                    </a>
+                  )}
+                </div>
+                {stateTowns.length === 0 ? (
+                  <p className="state-empty">No town reports published yet.</p>
+                ) : (
+                  stateTowns.map((t, i) => (
+                    <Card
+                      key={t.id + browseState}
+                      t={t}
+                      st={browseState}
+                      townKey={t.id + browseState}
+                      peerTowns={stateTowns.map((town) => ({ ...town, st: browseState }))}
+                      open={false}
+                      toggle={() => setOpen(t.id + browseState)}
+                      onNavigate={(key) => setOpen(key)}
+                      mark={mark}
+                      marks={marks}
+                      budget={budget}
+                      loadDelay={i * 400}
+                    />
+                  ))
                 )}
               </>
             )}
@@ -1137,6 +1387,23 @@ function wouldWeMoveSummary(t, stage) {
   return `Conditionally yes. ${lead}${caveat ? ` Watch for: ${caveat}` : ""} ${stage?.blurb ? stage.blurb : ""}`.trim();
 }
 
+function getFeaturedFind(finds, now = new Date()) {
+  if (!finds.length) return null;
+  const { issue } = getScoutPublication(now);
+  const week = Math.max(0, parseInt(issue, 10) - 1);
+  return finds[week % finds.length];
+}
+
+function featuredScoutStatsFor(town) {
+  const stage = scoutStageFor(town);
+  return [
+    { label: "The Catch", value: town.watch?.[0] || town.never || "—" },
+    { label: "Typical Home", value: town.priceLabel || "—" },
+    { label: "What You Get", value: town.get || "—" },
+    { label: "Discovery Stage", value: stage.label },
+  ];
+}
+
 function getScoutPublication(now = new Date()) {
   const d = new Date(now);
   const day = d.getDay();
@@ -1168,6 +1435,73 @@ function scoutEditorialFor(t) {
 
 function scoutStageFor(t) {
   return SCOUT_STAGE[t.stage] || SCOUT_STAGE.heating;
+}
+
+function StateExploreGrid({ onSelectState }) {
+  return (
+    <section className="state-explore">
+      <h2 className="state-explore-title">Explore by State</h2>
+      <div className="state-grid">
+        {STATE_LIST.map(({ abbr, name }) => (
+          <button
+            key={abbr}
+            type="button"
+            className="state-card"
+            onClick={() => onSelectState(abbr)}
+          >
+            <div className="state-card-name">{name}</div>
+            <div className="state-card-abbr">{abbr}</div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FeaturedScoutTeaser({ town, st, onRead }) {
+  const stats = featuredScoutStatsFor(town);
+  return (
+    <article className="featured-scout">
+      <div className="featured-scout-layout">
+        <div className="featured-scout-visual">
+          <ScoutImage town={town} st={st} className="featured-scout-img" />
+        </div>
+        <div className="featured-scout-body">
+          <span className="featured-scout-badge">Scout Pick</span>
+          <h2 className="featured-scout-name">{town.name}</h2>
+          <div className="featured-scout-location">{parseTownLocation(town, st)}</div>
+          <p className="featured-scout-deck">{town.hook}</p>
+          <button type="button" className="featured-scout-btn" onClick={onRead}>
+            Read Scout Report →
+          </button>
+        </div>
+      </div>
+      <div className="featured-scout-stats">
+        {stats.map((stat) => (
+          <div key={stat.label} className="featured-scout-stat">
+            <div className="featured-scout-stat-label">{stat.label}</div>
+            <div className="featured-scout-stat-value">{stat.value}</div>
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function FindPreviewCard({ town, st, onOpen, loadDelay = 0 }) {
+  const stage = scoutStageFor(town);
+  const { headline } = scoutEditorialFor(town);
+  return (
+    <button type="button" className="finds-preview-card" onClick={onOpen}>
+      <div className="finds-preview-visual">
+        <ScoutImage town={town} st={st} className="finds-preview-img" loadDelay={loadDelay} />
+        <span className="finds-preview-stage" style={{ background: stage.c }}>{stage.label}</span>
+      </div>
+      <h3 className="finds-preview-name">{town.name}</h3>
+      <div className="finds-preview-sub">{parseTownLocation(town, st)}</div>
+      <p className="finds-preview-hook">{headline}</p>
+    </button>
+  );
 }
 
 function ScoutMasthead({ weekLabel, issue }) {
