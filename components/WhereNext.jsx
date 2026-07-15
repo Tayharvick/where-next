@@ -363,8 +363,10 @@ export default function WhereNext() {
         .app-shell{font-family:${BODY};background:${C.cream};min-height:100vh;color:${C.text};-webkit-font-smoothing:antialiased}
         .page{max-width:1180px;margin:0 auto;padding-left:24px;padding-right:24px}
         .eyebrow{font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};font-weight:500}
-        .hero-wrap{position:relative;min-height:100vh;color:#fff;background-color:#1c1916;background-image:linear-gradient(rgba(0,0,0,.35),rgba(0,0,0,.35)),linear-gradient(180deg,rgba(0,0,0,.2) 0%,rgba(0,0,0,.12) 45%,rgba(0,0,0,.28) 100%),url("${HERO_IMAGE}");background-size:cover;background-position:center 42%}
-        .hero-wrap:after{content:"";position:absolute;left:0;right:0;bottom:0;height:140px;background:linear-gradient(transparent,${C.cream});pointer-events:none}
+        .hero-wrap{position:relative;min-height:100vh;color:#fff;background-color:#1c1916;background-image:url("${HERO_IMAGE}");background-size:auto 125%;background-position:center 22%;background-repeat:no-repeat;overflow:hidden}
+        @media(min-aspect-ratio:4/3){.hero-wrap{background-size:125% auto;background-position:center 22%}}
+        .hero-wrap:after{content:"";position:absolute;inset:0;z-index:1;background-image:linear-gradient(to bottom,transparent calc(100% - 140px),${C.cream} 100%),linear-gradient(180deg,rgba(0,0,0,.32) 0%,rgba(0,0,0,.24) 55%,rgba(0,0,0,.34) 100%);pointer-events:none}
+        .hero-wrap .page{position:relative;z-index:2}
         .nav{position:relative;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;padding-top:32px;gap:24px}
         .brand-block{display:flex;flex-direction:column;gap:4px}
         .brand{font-family:${DISPLAY};font-size:15px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#fff}
@@ -376,7 +378,7 @@ export default function WhereNext() {
         .hero-content{position:relative;z-index:2;max-width:700px;margin:0 auto;text-align:center;padding-top:clamp(72px,12vh,128px);padding-bottom:56px}
         .hero-title{font-family:${DISPLAY};font-size:clamp(47px,6.5vw,83px);line-height:1.04;letter-spacing:-.03em;margin:0;font-weight:400;text-wrap:balance}
         .hero-copy{font-family:${BODY};font-size:clamp(14px,1.55vw,16px);line-height:1.8;color:rgba(255,255,255,.68);max-width:480px;margin:40px auto 0;font-weight:400;letter-spacing:.015em}
-        .search-panel{margin:52px auto 0;background:#fff;backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid rgba(255,255,255,.85);border-radius:100px;padding:12px 12px 12px 36px;display:flex;gap:12px;box-shadow:0 32px 80px rgba(0,0,0,.22),0 12px 32px rgba(0,0,0,.12);max-width:600px}
+        .search-panel{margin:52px auto 0;background:#fff;border:1px solid rgba(255,255,255,.85);border-radius:100px;padding:12px 12px 12px 36px;display:flex;gap:12px;box-shadow:0 32px 80px rgba(0,0,0,.22),0 12px 32px rgba(0,0,0,.12);max-width:600px}
         .search-input{flex:1;min-width:0;border:0;background:transparent;color:${C.text};font-size:18px;padding:20px 0;outline:none;letter-spacing:.01em}
         .search-input::placeholder{color:${C.faint}}
         .search-button{border:0;background:${C.charcoal};color:#fff;border-radius:100px;padding:20px 38px;font-weight:500;font-size:16px;cursor:pointer;white-space:nowrap;letter-spacing:.02em;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 4px 14px rgba(0,0,0,.18)}
@@ -385,7 +387,7 @@ export default function WhereNext() {
         .search-button:disabled{opacity:.45;cursor:default;transform:none}
         .search-error{margin-top:18px;color:#FFD1C4;font-size:14px;line-height:1.55;max-width:600px;margin-left:auto;margin-right:auto}
         .lifestyle-chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:36px;max-width:720px;margin-left:auto;margin-right:auto}
-        .lifestyle-chip{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:rgba(255,255,255,.88);border-radius:999px;padding:9px 16px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:background .2s,border-color .2s;font-weight:400}
+        .lifestyle-chip{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:rgba(255,255,255,.88);border-radius:999px;padding:9px 16px;font-size:13px;cursor:pointer;transition:background .2s,border-color .2s;font-weight:400}
         .lifestyle-chip:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.35)}
         .loading{margin-top:22px;display:flex;align-items:center;justify-content:center;gap:12px;color:#fff;font-size:14px}
         .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
@@ -627,7 +629,7 @@ export default function WhereNext() {
         .footer-list li{display:flex;gap:14px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:12px;font-size:15px}
         @media(max-width:760px){
           .page{padding-left:16px;padding-right:16px}
-          .hero-wrap{min-height:100vh;background-position:center 38%}
+          .hero-wrap{min-height:100vh;background-size:auto 132%;background-position:center 16%}
           .nav-links{display:none}
           .hero-content{padding-top:88px;padding-bottom:40px}
           .hero-title{font-size:clamp(36px,9vw,47px)}
