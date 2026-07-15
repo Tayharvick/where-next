@@ -83,6 +83,20 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const under = (price, budget) =>
   Math.max(0, Math.min(1, (budget - num(price)) / (budget * 0.4) + 0.5));
 
+function apiErrorMessage(data, status) {
+  const err = data?.error;
+  if (typeof err === "string" && err.trim()) return err;
+  if (err && typeof err === "object" && typeof err.message === "string" && err.message.trim()) {
+    return err.message;
+  }
+  if (typeof data?.message === "string" && data.message.trim()) return data.message;
+  return `Search failed (${status}). Please try again.`;
+}
+
+function isValidSearchResult(data) {
+  return Boolean(data && Array.isArray(data.towns) && data.towns.length > 0);
+}
+
 export default function WhereNext() {
   const [tab, setTab] = useState("search");
   const [budget, setBudget] = useState(400000);
@@ -176,11 +190,43 @@ export default function WhereNext() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+
+      const rawText = await res.text();
+      let data = null;
+      try {
+        data = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        console.error("[WhereNext] /api/research non-JSON response", {
+          status: res.status,
+          body: rawText.slice(0, 1000),
+        });
+        throw new Error(
+          `Search failed (${res.status}). The server returned an unexpected response.`
+        );
+      }
+
+      console.log("[WhereNext] /api/research response", {
+        status: res.status,
+        ok: res.ok,
+        body: data,
+      });
+
+      if (!res.ok) {
+        throw new Error(apiErrorMessage(data, res.status));
+      }
+
+      if (data?.error) {
+        throw new Error(apiErrorMessage(data, res.status));
+      }
+
+      if (!isValidSearchResult(data)) {
+        throw new Error("Search completed but returned no towns. Please try again.");
+      }
+
       return data;
     } catch (e) {
-      setErr(e.message);
+      const message = e?.message || "Search failed. Please try again.";
+      setErr(message);
       return null;
     } finally {
       setBusy("");
@@ -190,7 +236,7 @@ export default function WhereNext() {
   const runSearch = async () => {
     if (!q.trim()) return;
     const data = await ask({ want: q }, "search");
-    if (data) {
+    if (isValidSearchResult(data)) {
       setSearch(data);
       setTab("search");
       setOpen(null);
@@ -265,6 +311,7 @@ export default function WhereNext() {
         .search-button:hover{background:${C.charcoal}}
         .search-button:active{transform:scale(.98)}
         .search-button:disabled{opacity:.45;cursor:default;transform:none}
+        .search-error{margin-top:14px;color:#FFD1C4;font-size:14px;line-height:1.55;max-width:720px}
         .examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
         .example{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);border-radius:999px;padding:8px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:background .2s}
         .example:hover{background:rgba(255,255,255,.2)}
@@ -508,6 +555,10 @@ export default function WhereNext() {
               </button>
             </div>
 
+            {err && !busy && (
+              <p className="search-error" role="alert">{err}</p>
+            )}
+
             <div className="examples">
               {EXAMPLES.map((e) => (
                 <button key={e} className="example" onClick={() => setQ(e)}>{e}</button>
@@ -519,9 +570,6 @@ export default function WhereNext() {
                 <span className="spinner" />
                 <span>{LOADING_STEPS[loadingStep]}...</span>
               </div>
-            )}
-            {err && !busy && (
-              <p style={{ color: "#FFD1C4", marginTop: 18, fontSize: 14 }}>{err}</p>
             )}
           </div>
         </div>
