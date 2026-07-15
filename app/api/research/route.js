@@ -7,31 +7,88 @@ import { IMAGE_PROMPT_RULE } from "@/lib/images";
 import { FACTS_PROMPT_RULES, factsSchemaJson } from "@/lib/townFacts";
 
 const MODEL = "claude-sonnet-4-6";
+const LOG_PREFIX = "[/api/research]";
 
 export const maxDuration = 300;
 
-async function call(messages, useSearch) {
+function logStep(step, detail = {}) {
+  console.log(
+    JSON.stringify({
+      scope: LOG_PREFIX,
+      level: "info",
+      step,
+      ...detail,
+      at: new Date().toISOString(),
+    })
+  );
+}
+
+function logError(step, err, detail = {}) {
+  const payload = {
+    scope: LOG_PREFIX,
+    level: "error",
+    step,
+    errorMessage: err?.message ?? String(err),
+    errorName: err?.name ?? "Error",
+    stack: err?.stack ?? null,
+    ...detail,
+    at: new Date().toISOString(),
+  };
+  console.error(JSON.stringify(payload));
+  return payload;
+}
+
+async function call(messages, useSearch, stepLabel) {
+  logStep(`${stepLabel}:start`, { useSearch, messageCount: messages.length });
+
   const body = { model: MODEL, max_tokens: 8000, messages };
   if (useSearch) body.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 12 }];
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify(body),
-  });
+  let res;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    logError(`${stepLabel}:fetch_failed`, err);
+    throw err;
+  }
 
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || "API error");
+  logStep(`${stepLabel}:response_received`, { status: res.status, ok: res.ok });
 
-  return (data.content || [])
+  let data;
+  try {
+    data = await res.json();
+  } catch (err) {
+    logError(`${stepLabel}:json_parse_failed`, err, { status: res.status });
+    throw err;
+  }
+
+  if (data.error) {
+    const apiErr = new Error(data.error.message || "API error");
+    logError(`${stepLabel}:anthropic_error`, apiErr, { anthropicError: data.error });
+    throw apiErr;
+  }
+
+  const text = (data.content || [])
     .map((b) => (b.type === "text" ? b.text : ""))
     .filter(Boolean)
     .join("\n")
     .trim();
+
+  logStep(`${stepLabel}:complete`, {
+    textLength: text.length,
+    contentBlocks: (data.content || []).length,
+    stopReason: data.stop_reason ?? null,
+  });
+
+  return text;
 }
 
 function extractJson(text) {
@@ -132,8 +189,17 @@ RESEARCH NOTES:
 `;
 
 export async function POST(req) {
+  let step = "init";
+
   try {
+    step = "parse_request";
+    logStep(step);
     const { abbr, want } = await req.json();
+    logStep("request_parsed", {
+      hasWant: Boolean(want?.trim()),
+      abbr: abbr ?? null,
+    });
+
     if (!process.env.ANTHROPIC_API_KEY) {
       return Response.json({ error: "No ANTHROPIC_API_KEY set on the server." }, { status: 500 });
     }
@@ -141,7 +207,8 @@ export async function POST(req) {
     let notes, head;
 
     if (want && want.trim()) {
-      notes = await call([{ role: "user", content: wantResearch(want.trim()) }], true);
+      step = "research_call_want";
+      notes = await call([{ role: "user", content: wantResearch(want.trim()) }], true, step);
       head = schema(
         "Your search",
         "One sentence naming the real trade-off in what they asked for. Specific and concrete. If their wants are in tension, say which one has to give."
@@ -149,29 +216,66 @@ export async function POST(req) {
     } else {
       const name = US[abbr];
       if (!name) return Response.json({ error: "Unknown state" }, { status: 400 });
-      notes = await call([{ role: "user", content: stateResearch(name) }], true);
+      step = "research_call_state";
+      notes = await call([{ role: "user", content: stateResearch(name) }], true, step);
       head = schema(name, "One sentence naming the real trade-off in this state. Specific and concrete, not generic.");
     }
 
-    const raw = await call([{ role: "user", content: head + notes }], false);
+    step = "schema_call";
+    const raw = await call([{ role: "user", content: head + notes }], false, step);
+    logStep("schema_raw_received", { rawLength: raw.length, rawPreview: raw.slice(0, 200) });
 
     let out;
+    step = "extract_json";
     try {
       out = extractJson(raw);
-    } catch {
+      logStep("extract_json:success", { townCount: out.towns?.length ?? 0 });
+    } catch (parseErr) {
+      logError("extract_json:failed", parseErr, { rawLength: raw.length });
+      step = "extract_json_retry";
       const fixed = await call(
         [{ role: "user", content: `This should be valid JSON but isn't — it may be cut off. Return ONLY the corrected, complete JSON. Shorten strings if needed.\n\n${raw}` }],
-        false
+        false,
+        step
       );
+      logStep("extract_json_retry_raw_received", { fixedLength: fixed.length });
       out = extractJson(fixed);
+      logStep("extract_json_retry:success", { townCount: out.towns?.length ?? 0 });
     }
 
     if (abbr) out.abbr = abbr;
+
     if (out.towns?.length) {
-      await enrichTownImages(out.towns, abbr || undefined);
+      step = "enrich_town_images";
+      logStep(step, { townCount: out.towns.length, townNames: out.towns.map((t) => t.name) });
+      try {
+        await enrichTownImages(out.towns, abbr || undefined, (townStep, townDetail) => {
+          logStep(`enrich_town_images:${townStep}`, townDetail);
+        });
+        logStep("enrich_town_images:complete");
+      } catch (imageErr) {
+        logError("enrich_town_images:failed", imageErr, {
+          townCount: out.towns.length,
+        });
+        throw imageErr;
+      }
+    } else {
+      logStep("enrich_town_images:skipped", { reason: "no towns in payload" });
     }
+
+    step = "response";
+    logStep(step, { townCount: out.towns?.length ?? 0 });
     return Response.json(out);
   } catch (e) {
-    return Response.json({ error: e.message }, { status: 500 });
+    const logged = logError(step, e);
+    return Response.json(
+      {
+        error: e.message,
+        step,
+        errorName: logged.errorName,
+        stack: logged.stack,
+      },
+      { status: 500 }
+    );
   }
 }
