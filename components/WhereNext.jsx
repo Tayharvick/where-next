@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { STATES, FINDS, US } from "@/lib/data";
 import { getStateListingsUrl } from "@/lib/stateListings";
+import { getStateProfile, getResearchedTownsForState, STATE_QUICK_FACT_LABELS } from "@/lib/stateProfiles";
+import { getFindProfile, FIND_QUICK_FACT_LABELS } from "@/lib/findProfiles";
 import { HERO_IMAGE, getTownImageChain, getTownImageFallback, isModernHeroPhoto, isValidImageUrl, US_FALLBACK_IMAGE } from "@/lib/images";
 import { getTownFactsDisplay } from "@/lib/townFacts";
 
@@ -63,8 +65,10 @@ const SCOUT_EDITORIAL = {
   johnsoncity: { headline: "The Appalachian town everyone is suddenly searching.", cta: "Why Johnson City? →" },
   wildwood: { headline: "Florida's fastest-growing secret.", cta: "See why we picked it →" },
   tontitown: { headline: "An Ozark village the boom finally found.", cta: "Meet Tontitown →" },
-  hoschton: { headline: "When Atlanta's sprawl reaches the village.", cta: "Why Hoschton? →" },
+  hoschton: { headline: "Where Atlanta's sprawl reaches the village.", cta: "Why Hoschton? →" },
 };
+
+const SCOUT_REPORT_LINK = "Read Scout Report →";
 
 const LIFESTYLE_CHIPS = [
   "Beach Town",
@@ -342,8 +346,13 @@ export default function WhereNext() {
 
   const stateTowns = useMemo(() => {
     if (!browseState) return [];
-    return ALL_STATES[browseState]?.towns || [];
+    return getResearchedTownsForState(browseState, ALL_STATES);
   }, [browseState, ALL_STATES]);
+
+  const stateProfile = useMemo(
+    () => (browseState ? getStateProfile(browseState) : null),
+    [browseState]
+  );
 
   const browseStateName = browseState ? US[browseState] || browseState : "";
   const browseStateListingsUrl = browseState ? getStateListingsUrl(browseState) : null;
@@ -363,22 +372,23 @@ export default function WhereNext() {
         .app-shell{font-family:${BODY};background:${C.cream};min-height:100vh;color:${C.text};-webkit-font-smoothing:antialiased}
         .page{max-width:1180px;margin:0 auto;padding-left:24px;padding-right:24px}
         .eyebrow{font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};font-weight:500}
-        .hero-wrap{position:relative;min-height:100vh;color:#fff;background-color:#1c1916;background-image:url("${HERO_IMAGE}");background-size:auto 125%;background-position:center 22%;background-repeat:no-repeat;overflow:hidden}
-        @media(min-aspect-ratio:4/3){.hero-wrap{background-size:125% auto;background-position:center 22%}}
-        .hero-wrap:after{content:"";position:absolute;inset:0;z-index:1;background-image:linear-gradient(to bottom,transparent calc(100% - 140px),${C.cream} 100%),linear-gradient(180deg,rgba(0,0,0,.32) 0%,rgba(0,0,0,.24) 55%,rgba(0,0,0,.34) 100%);pointer-events:none}
+        .hero-wrap{position:relative;min-height:100vh;color:#fff;background-color:#2a3420;background-image:url("${HERO_IMAGE}");background-size:cover;background-position:center 62%;background-repeat:no-repeat;overflow:hidden}
+        @media(min-aspect-ratio:4/3){.hero-wrap{background-position:center 68%}}
+        .hero-wrap:before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(to bottom,rgba(12,11,9,.34) 0%,rgba(12,11,9,.14) 20%,rgba(12,11,9,.05) 42%,transparent 58%)}
+        .hero-wrap:after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(to bottom,transparent calc(100% - 140px),${C.cream} 100%)}
         .hero-wrap .page{position:relative;z-index:2}
         .nav{position:relative;z-index:2;display:flex;align-items:flex-start;justify-content:space-between;padding-top:32px;gap:24px}
         .brand-block{display:flex;flex-direction:column;gap:4px}
-        .brand{font-family:${DISPLAY};font-size:15px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#fff}
-        .brand-sub{font-family:${BODY};font-size:12px;letter-spacing:.04em;color:rgba(255,255,255,.55);font-weight:400}
+        .brand{font-family:${DISPLAY};font-size:15px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#fff;text-shadow:0 1px 14px rgba(0,0,0,.35)}
+        .brand-sub{font-family:${BODY};font-size:12px;letter-spacing:.04em;color:rgba(255,255,255,.72);font-weight:400}
         .nav-links{display:flex;gap:32px;align-items:center;padding-top:2px}
-        .nav-link{background:transparent;border:0;color:rgba(255,255,255,.65);cursor:pointer;font-size:13px;padding:6px 0;font-weight:500;letter-spacing:.02em;transition:color .2s}
+        .nav-link{background:transparent;border:0;color:rgba(255,255,255,.78);cursor:pointer;font-size:13px;padding:6px 0;font-weight:500;letter-spacing:.02em;transition:color .2s;text-shadow:0 1px 12px rgba(0,0,0,.35)}
         .nav-link:hover{color:#fff}
         .nav-link[data-on="1"]{color:#fff;border-bottom:1px solid rgba(255,255,255,.7)}
         .hero-content{position:relative;z-index:2;max-width:700px;margin:0 auto;text-align:center;padding-top:clamp(72px,12vh,128px);padding-bottom:56px}
-        .hero-title{font-family:${DISPLAY};font-size:clamp(47px,6.5vw,83px);line-height:1.04;letter-spacing:-.03em;margin:0;font-weight:400;text-wrap:balance}
-        .hero-copy{font-family:${BODY};font-size:clamp(14px,1.55vw,16px);line-height:1.8;color:rgba(255,255,255,.68);max-width:480px;margin:40px auto 0;font-weight:400;letter-spacing:.015em}
-        .search-panel{margin:52px auto 0;background:#fff;border:1px solid rgba(255,255,255,.85);border-radius:100px;padding:12px 12px 12px 36px;display:flex;gap:12px;box-shadow:0 32px 80px rgba(0,0,0,.22),0 12px 32px rgba(0,0,0,.12);max-width:600px}
+        .hero-title{font-family:${DISPLAY};font-size:clamp(47px,6.5vw,83px);line-height:1.04;letter-spacing:-.03em;margin:0;font-weight:400;text-wrap:balance;color:#fff;text-shadow:0 2px 32px rgba(0,0,0,.42),0 1px 3px rgba(0,0,0,.32)}
+        .hero-copy{font-family:${BODY};font-size:clamp(14px,1.55vw,16px);line-height:1.8;color:rgba(255,255,255,.92);max-width:480px;margin:40px auto 0;font-weight:400;letter-spacing:.015em;text-shadow:0 1px 18px rgba(0,0,0,.38)}
+        .search-panel{margin:52px auto 0;background:rgba(255,255,255,.98);border:1px solid rgba(255,255,255,.95);border-radius:100px;padding:12px 12px 12px 36px;display:flex;gap:12px;box-shadow:0 28px 72px rgba(0,0,0,.34),0 10px 28px rgba(0,0,0,.2),0 0 0 1px rgba(255,255,255,.85);max-width:600px}
         .search-input{flex:1;min-width:0;border:0;background:transparent;color:${C.text};font-size:18px;padding:20px 0;outline:none;letter-spacing:.01em}
         .search-input::placeholder{color:${C.faint}}
         .search-button{border:0;background:${C.charcoal};color:#fff;border-radius:100px;padding:20px 38px;font-weight:500;font-size:16px;cursor:pointer;white-space:nowrap;letter-spacing:.02em;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 4px 14px rgba(0,0,0,.18)}
@@ -387,8 +397,8 @@ export default function WhereNext() {
         .search-button:disabled{opacity:.45;cursor:default;transform:none}
         .search-error{margin-top:18px;color:#FFD1C4;font-size:14px;line-height:1.55;max-width:600px;margin-left:auto;margin-right:auto}
         .lifestyle-chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:36px;max-width:720px;margin-left:auto;margin-right:auto}
-        .lifestyle-chip{border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.08);color:rgba(255,255,255,.88);border-radius:999px;padding:9px 16px;font-size:13px;cursor:pointer;transition:background .2s,border-color .2s;font-weight:400}
-        .lifestyle-chip:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.35)}
+        .lifestyle-chip{border:1px solid rgba(255,255,255,.42);background:rgba(28,25,22,.48);color:rgba(255,255,255,.96);border-radius:999px;padding:9px 16px;font-size:13px;cursor:pointer;transition:background .2s,border-color .2s,box-shadow .2s;font-weight:500;box-shadow:0 2px 14px rgba(0,0,0,.22);text-shadow:0 1px 8px rgba(0,0,0,.25)}
+        .lifestyle-chip:hover{background:rgba(28,25,22,.62);border-color:rgba(255,255,255,.58);box-shadow:0 4px 18px rgba(0,0,0,.28)}
         .loading{margin-top:22px;display:flex;align-items:center;justify-content:center;gap:12px;color:#fff;font-size:14px}
         .spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
         @keyframes spin{to{transform:rotate(360deg)}}
@@ -469,6 +479,26 @@ export default function WhereNext() {
         .state-listings-btn{display:inline-block;border:1px solid ${C.rule};background:${C.paper};color:${C.text};text-decoration:none;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:500;transition:border-color .25s,background .25s,box-shadow .25s}
         .state-listings-btn:hover{border-color:rgba(92,107,90,.3);background:${C.cream};box-shadow:0 4px 16px rgba(0,0,0,.04)}
         .state-empty{color:${C.soft};font-size:16px;line-height:1.65;margin:0}
+        .state-profile{margin:0 0 48px}
+        .state-profile-title{font-family:${DISPLAY};font-size:clamp(32px,4.5vw,48px);line-height:1.1;letter-spacing:-.03em;margin:0 0 48px;font-weight:400}
+        .state-profile-section{margin:0 0 48px}
+        .state-profile-section:last-of-type{margin-bottom:40px}
+        .state-profile-prose{font-size:17px;line-height:1.75;color:${C.soft};max-width:720px;margin:0}
+        .state-profile-list{list-style:none;padding:0;margin:16px 0 0;max-width:720px;display:grid;gap:12px}
+        .state-profile-list li{position:relative;padding-left:20px;font-size:16px;line-height:1.65;color:${C.text}}
+        .state-profile-list li:before{content:"";position:absolute;left:0;top:.62em;width:6px;height:6px;border-radius:50%;background:${C.olive}}
+        .state-profile-list-concerns li:before{background:${C.rust}}
+        .state-profile-areas{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;max-width:720px}
+        .state-profile-area{border:1px solid ${C.rule};background:${C.paper};border-radius:999px;padding:8px 14px;font-size:13px;color:${C.text}}
+        .state-profile-facts{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid ${C.rule};border-radius:20px;overflow:hidden;background:${C.paper};margin-top:16px}
+        .state-profile-fact{padding:22px 24px;border-right:1px solid ${C.rule};border-bottom:1px solid ${C.rule}}
+        .state-profile-fact:nth-child(4n){border-right:0}
+        .state-profile-fact:nth-last-child(-n+4){border-bottom:0}
+        .state-profile-fact-label{font-family:${MONO};font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};margin-bottom:8px;font-weight:500}
+        .state-profile-fact-value{font-family:${DISPLAY};font-size:clamp(16px,1.6vw,18px);line-height:1.35;font-weight:400;color:${C.text};letter-spacing:0}
+        .state-profile-towns{margin-top:16px}
+        .state-profile-redfin{display:inline-block;margin-top:8px;border:0;background:${C.charcoal};color:#fff;text-decoration:none;border-radius:14px;padding:18px 36px;font-size:15px;font-weight:500;letter-spacing:.02em;transition:background .2s,box-shadow .2s;box-shadow:0 4px 16px rgba(0,0,0,.12);font-family:${BODY}}
+        .state-profile-redfin:hover{background:#1a1a1a;box-shadow:0 6px 24px rgba(0,0,0,.16)}
         .budget-card{background:${C.paper};border:1px solid ${C.rule};border-radius:16px;padding:20px 22px;margin-bottom:28px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
         .budget-row{display:flex;align-items:center;gap:18px}
         .budget-value{font-family:${DISPLAY};font-size:26px;min-width:90px;text-align:right;font-weight:600;letter-spacing:-.02em}
@@ -610,26 +640,47 @@ export default function WhereNext() {
         .scout-cover-cta{margin-top:32px;font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);transition:color .2s}
         .scout-cover:hover .scout-cover-cta{color:rgba(255,255,255,.85)}
         .scout-pick{margin:0 0 72px;padding:48px 0;border-top:1px solid ${C.rule};border-bottom:1px solid ${C.rule}}
+        .scout-pick-continued{margin-bottom:0;border-bottom:0}
+        .scout-feature-body{margin:0 0 72px;padding:0 0 48px;border-bottom:1px solid ${C.rule}}
+        .scout-feature{margin:0 0 48px}
+        .scout-feature:last-child{margin-bottom:0}
+        .scout-feature-prose{font-size:17px;line-height:1.75;color:${C.soft};max-width:720px;margin:0}
+        .scout-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid ${C.rule};border-radius:20px;overflow:hidden;background:${C.paper}}
+        .scout-fact{padding:22px 24px;border-right:1px solid ${C.rule};border-bottom:1px solid ${C.rule}}
+        .scout-fact:nth-child(3n){border-right:0}
+        .scout-fact:nth-last-child(-n+3){border-bottom:0}
+        .scout-fact-label{font-family:${MONO};font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};margin-bottom:8px;font-weight:500}
+        .scout-fact-value{font-family:${DISPLAY};font-size:clamp(16px,1.6vw,18px);line-height:1.35;font-weight:400;color:${C.text};letter-spacing:0}
         .scout-pick-list{list-style:none;padding:0;margin:0}
         .scout-pick-list li{display:flex;gap:14px;font-size:16px;line-height:1.7;color:${C.text};margin-bottom:16px}
         .scout-pick-list li:last-child{margin-bottom:0}
         .scout-pick-list li span:first-child{color:${C.faint};flex-shrink:0}
-        .scout-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:36px;margin-bottom:80px}
-        .scout-card{display:flex;flex-direction:column;border:0;background:transparent;padding:0;cursor:pointer;text-align:left}
-        .scout-card-visual{position:relative;aspect-ratio:4/3;border-radius:18px;overflow:hidden;background:#1a1a1a;margin-bottom:22px;box-shadow:0 2px 16px rgba(0,0,0,.06);transition:box-shadow .35s ease,transform .35s ease}
-        .scout-card:hover .scout-card-visual{box-shadow:0 12px 36px rgba(0,0,0,.1);transform:translateY(-4px)}
-        .scout-card-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .6s ease}
-        .scout-card:hover .scout-card-img{transform:scale(1.04)}
-        .scout-card-visual .scout-stage-pill{position:absolute;top:16px;left:16px;z-index:1}
-        .scout-card-name{font-family:${DISPLAY};font-size:28px;letter-spacing:-.03em;margin:0 0 8px;font-weight:600;line-height:1.12}
+        .scout-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:48px 36px;margin-bottom:80px}
+        .scout-card{display:flex;flex-direction:column;border:0;border-top:1px solid ${C.rule};background:transparent;padding:32px 0 0;cursor:pointer;text-align:left;transition:opacity .2s}
+        .scout-card:hover{opacity:.92}
+        .scout-card-visual{position:relative;aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:#1a1a1a;margin-bottom:20px;border:1px solid ${C.rule};transition:border-color .3s ease,transform .35s ease}
+        .scout-card:hover .scout-card-visual{border-color:rgba(92,107,90,.28);transform:translateY(-2px)}
+        .scout-card-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;transition:transform .6s ease}
+        .scout-card:hover .scout-card-img{transform:scale(1.03)}
+        .scout-card-name{font-family:${DISPLAY};font-size:26px;letter-spacing:-.03em;margin:0 0 8px;font-weight:600;line-height:1.12}
         .scout-card-state{font-family:${MONO};font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:${C.faint};margin-bottom:12px}
-        .scout-card-teaser{font-size:15px;line-height:1.65;color:${C.soft};margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+        .scout-card-teaser{font-size:15px;line-height:1.65;color:${C.soft};margin:0}
+        .scout-card-link{display:inline-block;margin-top:18px;font-family:${MONO};font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${C.olive};font-weight:500;transition:color .2s}
+        .scout-card:hover .scout-card-link{color:${C.pine}}
         .footer-card{margin-top:40px;background:${C.ink};color:#fff;border-radius:20px;padding:32px}
         .footer-list{list-style:none;padding:0;margin:16px 0 0}
         .footer-list li{display:flex;gap:14px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:12px;font-size:15px}
+        @media(max-width:1080px){
+          .scout-grid{grid-template-columns:repeat(2,1fr);gap:40px 28px}
+          .scout-facts{grid-template-columns:1fr 1fr}
+          .scout-fact:nth-child(3n){border-right:1px solid ${C.rule}}
+          .scout-fact:nth-child(2n){border-right:0}
+          .scout-fact:nth-last-child(-n+3){border-bottom:1px solid ${C.rule}}
+          .scout-fact:nth-last-child(-n+2){border-bottom:0}
+        }
         @media(max-width:760px){
           .page{padding-left:16px;padding-right:16px}
-          .hero-wrap{min-height:100vh;background-size:auto 132%;background-position:center 16%}
+          .hero-wrap{min-height:100vh;background-size:cover;background-position:center 54%}
           .nav-links{display:none}
           .hero-content{padding-top:88px;padding-bottom:40px}
           .hero-title{font-size:clamp(36px,9vw,47px)}
@@ -654,7 +705,17 @@ export default function WhereNext() {
           .featured-scout-stat:nth-child(2){border-right:0}
           .featured-scout-stat:nth-child(1),.featured-scout-stat:nth-child(2){border-bottom:1px solid ${C.rule}}
           .featured-scout-stat:nth-child(odd){border-right:1px solid ${C.rule}}
-          .finds-preview-grid{grid-template-columns:1fr;gap:24px}
+          .state-profile-facts{grid-template-columns:1fr 1fr}
+          .state-profile-fact:nth-child(4n){border-right:1px solid ${C.rule}}
+          .state-profile-fact:nth-child(2n){border-right:0}
+          .state-profile-fact:nth-last-child(-n+4){border-bottom:1px solid ${C.rule}}
+          .state-profile-fact:nth-last-child(-n+2){border-bottom:0}
+          .scout-facts{grid-template-columns:1fr 1fr}
+          .scout-fact:nth-child(3n){border-right:1px solid ${C.rule}}
+          .scout-fact:nth-child(2n){border-right:0}
+          .scout-fact:nth-last-child(-n+3){border-bottom:1px solid ${C.rule}}
+          .scout-fact:nth-last-child(-n+2){border-bottom:0}
+          .state-profile-redfin{width:100%;text-align:center}
           .finds-preview-head{flex-direction:column;align-items:flex-start}
           .split{grid-template-columns:1fr}
           .stats{grid-template-columns:1fr}
@@ -670,7 +731,8 @@ export default function WhereNext() {
           .fit-summary{grid-template-columns:1fr}
           .similar-grid{grid-template-columns:1fr}
           .scout-cover-body{padding:32px 20px 40px}
-          .scout-grid{grid-template-columns:1fr}
+          .scout-grid{grid-template-columns:1fr;gap:44px}
+          .scout-card{padding-top:28px}
           .scout-masthead{padding:40px 0 32px}
           .town-summary,.expanded{padding-left:20px;padding-right:20px}
           .budget-row{flex-wrap:wrap}
@@ -718,7 +780,7 @@ export default function WhereNext() {
                   }
                 }}
                 onKeyDown={(e) => e.key === "Enter" && !busy && runSearch()}
-                placeholder="Mountains, lakes, small town, under $400k..."
+                placeholder="Describe the life you want..."
               />
               <button className="search-button" disabled={!!busy || !q.trim()} onClick={runSearch}>
                 {busy === "search" ? "Searching..." : "Find My Towns"}
@@ -898,7 +960,7 @@ export default function WhereNext() {
                 />
 
                 {featuredFind.why?.length > 0 && (
-                  <section className="scout-pick">
+                  <section className={`scout-pick${getFindProfile(featuredFind.id) ? " scout-pick-continued" : ""}`}>
                     <div className="scout-label">Why it&apos;s this week&apos;s pick</div>
                     <ul className="scout-pick-list">
                       {featuredFind.why.slice(0, 5).map((item, i) => (
@@ -911,9 +973,11 @@ export default function WhereNext() {
                   </section>
                 )}
 
+                <ScoutFeaturedStory town={featuredFind} />
+
                 {restFinds.length > 0 && (
                   <>
-                    <div className="scout-section-label">Also This Week</div>
+                    <div className="scout-section-label">More Scout Reports</div>
                     <div className="scout-grid">
                       {restFinds.map((t, i) => (
                         <ScoutEditorialCard
@@ -946,12 +1010,9 @@ export default function WhereNext() {
                 <button
                   type="button"
                   className="state-back"
-                  onClick={() => {
-                    setBrowseState(null);
-                    setOpen(null);
-                  }}
+                  onClick={() => setOpen(null)}
                 >
-                  ← Back to all states
+                  ← Back to {browseStateName}
                 </button>
                 <Card
                   key={openStateTown.id + browseState}
@@ -967,6 +1028,28 @@ export default function WhereNext() {
                   budget={budget}
                 />
               </>
+            ) : stateProfile ? (
+              <>
+                <button
+                  type="button"
+                  className="state-back"
+                  onClick={() => {
+                    setBrowseState(null);
+                    setOpen(null);
+                  }}
+                >
+                  ← Back to all states
+                </button>
+                <StateProfilePage
+                  profile={stateProfile}
+                  towns={stateTowns}
+                  listingsUrl={browseStateListingsUrl}
+                  mark={mark}
+                  marks={marks}
+                  budget={budget}
+                  onOpenTown={(key) => setOpen(key)}
+                />
+              </>
             ) : (
               <>
                 <button
@@ -979,39 +1062,7 @@ export default function WhereNext() {
                 >
                   ← Back to all states
                 </button>
-                <div className="state-detail-head">
-                  <h2 className="state-explore-title" style={{ margin: 0 }}>{browseStateName}</h2>
-                  {browseStateListingsUrl && (
-                    <a
-                      className="state-listings-btn"
-                      href={browseStateListingsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      View homes in {browseStateName} →
-                    </a>
-                  )}
-                </div>
-                {stateTowns.length === 0 ? (
-                  <p className="state-empty">No town reports published yet.</p>
-                ) : (
-                  stateTowns.map((t, i) => (
-                    <Card
-                      key={t.id + browseState}
-                      t={t}
-                      st={browseState}
-                      townKey={t.id + browseState}
-                      peerTowns={stateTowns.map((town) => ({ ...town, st: browseState }))}
-                      open={false}
-                      toggle={() => setOpen(t.id + browseState)}
-                      onNavigate={(key) => setOpen(key)}
-                      mark={mark}
-                      marks={marks}
-                      budget={budget}
-                      loadDelay={i * 400}
-                    />
-                  ))
-                )}
+                <p className="state-empty">State not found.</p>
               </>
             )}
           </>
@@ -1460,6 +1511,98 @@ function StateExploreGrid({ onSelectState }) {
   );
 }
 
+function StateProfilePage({ profile, towns, listingsUrl, mark, marks, budget, onOpenTown }) {
+  const st = profile.abbr;
+  const peerTowns = towns.map((town) => ({ ...town, st }));
+
+  return (
+    <article className="state-profile">
+      <h2 className="state-profile-title">{profile.name}</h2>
+
+      <section className="state-profile-section">
+        <div className="section-eyebrow">Scout Overview</div>
+        <p className="state-profile-prose">{profile.overview}</p>
+      </section>
+
+      <section className="state-profile-section">
+        <div className="section-eyebrow">Why People Move Here</div>
+        <ul className="state-profile-list">
+          {profile.whyMove.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="state-profile-section">
+        <div className="section-eyebrow">Things to Think About</div>
+        <ul className="state-profile-list state-profile-list-concerns">
+          {profile.thinkAbout.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="state-profile-section">
+        <div className="section-eyebrow">Quick Facts</div>
+        <div className="state-profile-facts">
+          {STATE_QUICK_FACT_LABELS.map(({ key, label }) => (
+            <div key={key} className="state-profile-fact">
+              <div className="state-profile-fact-label">{label}</div>
+              <div className="state-profile-fact-value">{profile.quickFacts[key]}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="state-profile-section">
+        <div className="section-eyebrow">Growing or Popular Areas</div>
+        <div className="state-profile-areas">
+          {profile.growingAreas.map((area) => (
+            <span key={area} className="state-profile-area">{area}</span>
+          ))}
+        </div>
+      </section>
+
+      <section className="state-profile-section">
+        <div className="section-eyebrow">Explore Towns</div>
+        {towns.length === 0 ? (
+          <p className="state-empty">Town research is coming soon.</p>
+        ) : (
+          <div className="state-profile-towns">
+            {towns.map((t, i) => (
+              <Card
+                key={t.id + st}
+                t={t}
+                st={st}
+                townKey={t.id + st}
+                peerTowns={peerTowns}
+                open={false}
+                toggle={() => onOpenTown(t.id + st)}
+                onNavigate={onOpenTown}
+                mark={mark}
+                marks={marks}
+                budget={budget}
+                loadDelay={i * 400}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {listingsUrl && (
+        <a
+          className="state-profile-redfin"
+          href={listingsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          View homes in {profile.name} on Redfin
+        </a>
+      )}
+    </article>
+  );
+}
+
 function FeaturedScoutTeaser({ town, st, onRead }) {
   const stats = featuredScoutStatsFor(town);
   return (
@@ -1579,6 +1722,44 @@ function ScoutImage({ town, st, className, loadDelay = 0 }) {
   );
 }
 
+function ScoutFeaturedStory({ town }) {
+  const profile = getFindProfile(town?.id);
+  if (!profile) return null;
+
+  return (
+    <div className="scout-feature-body">
+      <section className="scout-feature">
+        <div className="scout-label">Quick Facts</div>
+        <div className="scout-facts">
+          {FIND_QUICK_FACT_LABELS.map(({ key, label }) => (
+            <div key={key} className="scout-fact">
+              <div className="scout-fact-label">{label}</div>
+              <div className="scout-fact-value">{profile.quickFacts[key]}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="scout-feature">
+        <div className="scout-label">Why We Picked It</div>
+        <p className="scout-feature-prose">{profile.whyWePickedIt}</p>
+      </section>
+
+      <section className="scout-feature">
+        <div className="scout-label">Things to Know</div>
+        <ul className="scout-pick-list">
+          {profile.thingsToKnow.map((item) => (
+            <li key={item}>
+              <span>—</span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
 function ScoutCoverStory({ town, st, onOpen }) {
   const stage = scoutStageFor(town);
   const { headline, deck, cta } = scoutEditorialFor(town);
@@ -1603,17 +1784,16 @@ function ScoutCoverStory({ town, st, onOpen }) {
 }
 
 function ScoutEditorialCard({ town, st, onOpen, loadDelay = 0 }) {
-  const stage = scoutStageFor(town);
   const { headline } = scoutEditorialFor(town);
   return (
-    <button type="button" className="scout-card" onClick={onOpen}>
+    <button type="button" className="scout-card" onClick={onOpen} aria-label={`Read Scout Report for ${town.name}, ${parseTownLocation(town, st)}`}>
       <div className="scout-card-visual">
         <ScoutImage town={town} st={st} className="scout-card-img" loadDelay={loadDelay} />
-        <span className="scout-stage-pill scout-stage-pill-sm" style={{ background: stage.c }}>{stage.label}</span>
       </div>
       <h3 className="scout-card-name">{town.name}</h3>
       <div className="scout-card-state">{parseTownLocation(town, st)}</div>
       <p className="scout-card-teaser">{headline}</p>
+      <span className="scout-card-link">{SCOUT_REPORT_LINK}</span>
     </button>
   );
 }
