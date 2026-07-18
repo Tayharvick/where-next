@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import TownLocationMap, { MapViewToggle, SchoolsLayerToggle } from "@/components/TownLocationMap";
+import TownLocationMap, { MapViewToggle, SchoolsLayerToggle, hasValidCoords } from "@/components/TownLocationMap";
 import EducationSchoolsSection from "@/components/EducationSchoolsSection";
 
 const LOC_CACHE = "wn-explore:v3";
@@ -64,6 +64,8 @@ export default function TownExploreEducation({ town, stateAbbr }) {
     setLocError("");
     setLocationData(null);
     setEducationData(null);
+    setMapMode("map");
+    setShowSchools(false);
 
     const locKey = `${LOC_CACHE}:${town.id || town.name}:${stateAbbr || ""}`;
     const eduKey = `${EDU_CACHE}:${town.id || town.name}:${stateAbbr || ""}`;
@@ -141,6 +143,11 @@ export default function TownExploreEducation({ town, stateAbbr }) {
     };
   }, [town.id, town.name, town.sub, stateAbbr]);
 
+  const mapKey =
+    hasValidCoords(locationData?.coords) && locationData?.ok
+      ? `${town.id || town.name}:${stateAbbr || ""}:${locationData.coords.lat},${locationData.coords.lon}`
+      : null;
+
   return (
     <>
       <section className="explore-area" aria-labelledby="explore-area-heading">
@@ -168,8 +175,10 @@ export default function TownExploreEducation({ town, stateAbbr }) {
           </div>
           {locLoading ? (
             <div className="town-map-placeholder" aria-hidden="true" />
-          ) : locationData ? (
+          ) : mapKey ? (
             <TownLocationMap
+              key={mapKey}
+              mapKey={mapKey}
               data={locationData}
               viewMode={mapMode}
               showSchools={showSchools}

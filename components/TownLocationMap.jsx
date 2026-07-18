@@ -136,18 +136,52 @@ const GEO_STYLES = {
   park: { color: "#5C6B5A", weight: 1.5, opacity: 0.5, fillColor: "#5C6B5A", fillOpacity: 0.08, dashArray: "4 6" },
 };
 
-export default function TownLocationMap({ data, viewMode = "map", showSchools = false, schoolMarkers = [] }) {
+export function hasValidCoords(coords) {
+  return coords && Number.isFinite(Number(coords.lat)) && Number.isFinite(Number(coords.lon));
+}
+
+function clearLeafletContainer(container) {
+  if (!container) return;
+  delete container._leaflet_id;
+  container.replaceChildren();
+}
+
+function isLiveMap(map) {
+  if (!map) return false;
+  try {
+    const container = map.getContainer?.();
+    return Boolean(container?.isConnected);
+  } catch {
+    return false;
+  }
+}
+
+function destroyMap(mapRef, layersRef) {
+  const map = mapRef.current;
+  if (!map) return;
+  try {
+    map.remove();
+  } catch {}
+  mapRef.current = null;
+  layersRef.current = { tile: null, boundary: null, geo: [], markers: [], schools: null };
+}
+
+export default function TownLocationMap({
+  data,
+  mapKey,
+  viewMode = "map",
+  showSchools = false,
+  schoolMarkers = [],
+}) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const layersRef = useRef({ tile: null, boundary: null, geo: [], markers: [], schools: null });
-  const modeRef = useRef(viewMode);
-  const schoolsRef = useRef({ show: showSchools, markers: schoolMarkers });
+  const initGenRef = useRef(0);
 
   useEffect(() => {
-    modeRef.current = viewMode;
     const map = mapRef.current;
     const L = map?._leaflet;
-    if (!map || !L) return;
+    if (!isLiveMap(map) || !L) return;
 
     if (layersRef.current.tile) {
       map.removeLayer(layersRef.current.tile);
@@ -157,13 +191,12 @@ export default function TownLocationMap({ data, viewMode = "map", showSchools = 
       attribution: cfg.attribution,
       maxZoom: cfg.maxZoom,
     }).addTo(map);
-  }, [viewMode]);
+  }, [viewMode, mapKey]);
 
   useEffect(() => {
-    schoolsRef.current = { show: showSchools, markers: schoolMarkers || [] };
     const map = mapRef.current;
     const L = map?._leaflet;
-    if (!map || !L) return;
+    if (!isLiveMap(map) || !L) return;
 
     if (layersRef.current.schools) {
       map.removeLayer(layersRef.current.schools);
@@ -174,6 +207,7 @@ export default function TownLocationMap({ data, viewMode = "map", showSchools = 
 
     const group = L.layerGroup();
     for (const school of schoolMarkers) {
+      if (!Number.isFinite(Number(school.lat)) || !Number.isFinite(Number(school.lon))) continue;
       const icon = L.divIcon({
         className: "",
         html: `<div class="town-map-school-dot" data-type="${school.type}"></div>`,
@@ -186,26 +220,30 @@ export default function TownLocationMap({ data, viewMode = "map", showSchools = 
     }
     group.addTo(map);
     layersRef.current.schools = group;
-  }, [showSchools, schoolMarkers, data]);
+  }, [showSchools, schoolMarkers, mapKey]);
 
   useEffect(() => {
-    if (!data?.coords || !containerRef.current) return;
+    if (!hasValidCoords(data?.coords) || !mapKey) return;
 
+    if (!containerRef.current) return;
+
+    const gen = ++initGenRef.current;
     let cancelled = false;
 
     (async () => {
       const L = (await import("leaflet")).default;
       await import("leaflet/dist/leaflet.css");
 
-      if (cancelled || !containerRef.current) return;
+      if (cancelled || gen !== initGenRef.current || !containerRef.current) return;
 
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        layersRef.current = { tile: null, boundary: null, geo: [], markers: [], schools: null };
-      }
+      destroyMap(mapRef, layersRef);
+      clearLeafletContainer(containerRef.current);
 
-      const { lat, lon } = data.coords;
+      if (cancelled || gen !== initGenRef.current || !containerRef.current?.isConnected) return;
+
+      const lat = Number(data.coords.lat);
+      const lon = Number(data.coords.lon);
+
       const map = L.map(containerRef.current, {
         center: [lat, lon],
         zoom: 10,
@@ -215,7 +253,7 @@ export default function TownLocationMap({ data, viewMode = "map", showSchools = 
       map._leaflet = L;
       mapRef.current = map;
 
-      const cfg = TILES[modeRef.current] || TILES.map;
+      const cfg = TILES.map;
       layersRef.current.tile = L.tileLayer(cfg.url, {
         attribution: cfg.attribution,
         maxZoom: cfg.maxZoom,
@@ -255,6 +293,7 @@ export default function TownLocationMap({ data, viewMode = "map", showSchools = 
       const bounds = L.latLngBounds([[lat, lon]]);
 
       for (const city of data.nearbyCities || []) {
+        if (!Number.isFinite(Number(city.lat)) || !Number.isFinite(Number(city.lon))) continue;
         bounds.extend([city.lat, city.lon]);
         const cityIcon = L.divIcon({
           className: "",
@@ -274,22 +313,41 @@ export default function TownLocationMap({ data, viewMode = "map", showSchools = 
       } else {
         map.setView([lat, lon], 11);
       }
+
+      requestAnimationFrame(() => {
+        if (gen !== initGenRef.current || !isLiveMap(mapRef.current)) return;
+        mapRef.current.invalidateSize();
+      });
     })();
 
     return () => {
       cancelled = true;
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      destroyMap(mapRef, layersRef);
+      clearLeafletContainer(containerRef.current);
     };
-  }, [data]);
+  }, [mapKey, data]);
+
+  if (!hasValidCoords(data?.coords)) {
+    return (
+      <>
+        <style>{MAP_STYLES}</style>
+        <div className="town-map-wrap">
+          <div className="town-map-canvas town-map-placeholder town-map-unavailable" aria-hidden="true" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <style>{MAP_STYLES}</style>
       <div className="town-map-wrap">
-        <div ref={containerRef} className="town-map-canvas" aria-label="Interactive town map" />
+        <div
+          key={mapKey}
+          ref={containerRef}
+          className="town-map-canvas"
+          aria-label="Interactive town map"
+        />
       </div>
     </>
   );
