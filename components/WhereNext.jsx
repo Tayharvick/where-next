@@ -10,6 +10,7 @@ import { HERO_IMAGE, getTownImageChain, getTownImageFallback, isModernHeroPhoto,
 import { getTownFactsDisplay } from "@/lib/townFacts";
 import { SiteNavHero, SubpageShell } from "@/components/SiteNav";
 import { resolveNavActive } from "@/lib/siteNav";
+import TownExploreEducation from "@/components/TownExploreEducation";
 
 const KEY = "where-next:v7";
 
@@ -634,27 +635,27 @@ export default function WhereNext({ section = "home" }) {
         .shortlist-items{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
         .shortlist-pill{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:8px 14px;font-size:13px}
         .find-badge{display:inline-block;border:1px solid ${C.rule};background:${C.cream};color:${C.soft};border-radius:999px;padding:5px 12px;font-family:${MONO};font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-bottom:12px}
-        .scout-masthead{text-align:center;padding:64px 0 56px}
+        .scout-masthead{text-align:center;padding:20px 0 0;position:relative;z-index:2}
         .scout-masthead-rule{height:1px;background:${C.rule};max-width:100px;margin:0 auto}
-        .scout-masthead-brand{font-family:${DISPLAY};font-size:clamp(36px,5.5vw,60px);letter-spacing:-.04em;font-weight:600;margin:32px 0 16px;line-height:1.05}
-        .scout-masthead-tagline{color:${C.soft};font-size:18px;line-height:1.55;max-width:480px;margin:0 auto 24px;font-weight:400;letter-spacing:-.01em}
-        .scout-masthead-meta{font-family:${MONO};font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:${C.faint}}
-        .scout-masthead-dot{margin:0 12px;color:${C.rule}}
+        .scout-masthead-brand{font-family:${DISPLAY};font-size:clamp(40px,6.2vw,68px);letter-spacing:-.04em;font-weight:600;margin:18px 0 8px;line-height:1.04}
+        .scout-masthead-tagline{color:#4a4a48;font-size:clamp(17px,2vw,20px);line-height:1.5;max-width:500px;margin:0 auto 10px;font-weight:400;letter-spacing:-.012em}
+        .scout-masthead-meta{font-family:${MONO};font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:${C.faint}}
+        .scout-masthead-dot{margin:0 10px;color:${C.rule}}
         .scout-label{font-family:${MONO};font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:${C.faint};font-weight:500;margin-bottom:20px}
         .scout-section-label{font-family:${MONO};font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:${C.faint};font-weight:500;text-align:center;margin:64px 0 32px;padding-top:56px;border-top:1px solid ${C.rule}}
-        .scout-cover{display:block;width:100%;border:0;background:transparent;padding:0;margin:0 0 64px;cursor:pointer;text-align:left}
-        .scout-cover-bleed{position:relative;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);min-height:min(76vh,680px);overflow:hidden;background:#1a1a1a}
-        .scout-cover-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;transition:transform .8s ease}
+        .scout-cover{display:block;width:100%;border:0;background:transparent;padding:0;margin:-20px 0 64px;cursor:pointer;text-align:left;position:relative;z-index:1}
+        .scout-cover-bleed{position:relative;width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);min-height:min(84vh,760px);overflow:hidden;background:#1a1a1a;box-shadow:0 -1px 0 rgba(0,0,0,.04)}
+        .scout-cover-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 42%;transition:transform .8s ease}
         .scout-cover:hover .scout-cover-img{transform:scale(1.02)}
-        .scout-cover-gradient{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.08) 0%,rgba(0,0,0,.35) 45%,rgba(0,0,0,.82) 100%)}
-        .scout-cover-body{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:flex-end;padding:56px max(28px,calc((100vw - 1180px)/2 + 28px)) 64px;color:#fff}
-        .scout-kicker{font-family:${MONO};font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:20px}
-        .scout-stage-pill{display:inline-block;align-self:flex-start;border-radius:999px;color:#fff;padding:8px 15px;font-family:${MONO};font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin-bottom:22px}
+        .scout-cover-gradient{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.04) 0%,rgba(0,0,0,.06) 38%,rgba(0,0,0,.42) 68%,rgba(0,0,0,.84) 100%)}
+        .scout-cover-body{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;justify-content:flex-end;padding:48px max(28px,calc((100vw - 1180px)/2 + 28px)) 88px;color:#fff}
+        .scout-kicker{font-family:${MONO};font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:14px}
+        .scout-stage-pill{display:inline-block;align-self:flex-start;border-radius:999px;color:#fff;padding:8px 15px;font-family:${MONO};font-size:9px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;margin-bottom:14px}
         .scout-stage-pill-sm{padding:6px 11px;font-size:8px;margin-bottom:0;letter-spacing:.12em}
-        .scout-cover-headline{font-family:${DISPLAY};font-size:clamp(36px,5.5vw,64px);letter-spacing:-.04em;line-height:1.08;margin:0;font-weight:600;max-width:820px;text-wrap:balance}
-        .scout-cover-byline{margin-top:18px;font-family:${MONO};font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.55)}
-        .scout-cover-deck{margin:20px 0 0;font-size:clamp(17px,2.2vw,21px);line-height:1.55;font-weight:400;letter-spacing:-.01em;max-width:640px;color:rgba(255,255,255,.82)}
-        .scout-cover-cta{margin-top:32px;font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);transition:color .2s}
+        .scout-cover-headline{font-family:${DISPLAY};font-size:clamp(36px,5.5vw,64px);letter-spacing:-.04em;line-height:1.1;margin:0;font-weight:600;max-width:820px;text-wrap:balance;text-shadow:0 2px 24px rgba(0,0,0,.28)}
+        .scout-cover-byline{margin-top:14px;font-family:${MONO};font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.58)}
+        .scout-cover-deck{margin:14px 0 0;font-size:clamp(17px,2.2vw,21px);line-height:1.52;font-weight:400;letter-spacing:-.01em;max-width:640px;color:rgba(255,255,255,.84)}
+        .scout-cover-cta{margin-top:22px;font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);transition:color .2s}
         .scout-cover:hover .scout-cover-cta{color:rgba(255,255,255,.85)}
         .scout-pick{margin:0 0 72px;padding:48px 0;border-top:1px solid ${C.rule};border-bottom:1px solid ${C.rule}}
         .scout-pick-continued{margin-bottom:0;border-bottom:0}
@@ -684,6 +685,53 @@ export default function WhereNext({ section = "home" }) {
         .scout-card-teaser{font-size:15px;line-height:1.65;color:${C.soft};margin:0}
         .scout-card-link{display:inline-block;margin-top:18px;font-family:${MONO};font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${C.olive};font-weight:500;transition:color .2s}
         .scout-card:hover .scout-card-link{color:${C.pine}}
+        .explore-area{margin:0;padding:36px 0 48px;border-bottom:1px solid ${C.rule}}
+        .explore-area-head{margin-bottom:24px}
+        .explore-area-summary{font-family:${DISPLAY};font-size:clamp(19px,2.4vw,24px);line-height:1.45;color:${C.ink};margin:10px 0 0;font-weight:500;letter-spacing:-.02em;max-width:720px}
+        .explore-area-summary-loading{color:${C.soft};font-family:${BODY};font-size:15px;font-weight:400;letter-spacing:0}
+        .town-map-shell{position:relative;border:1px solid ${C.rule};border-radius:20px;overflow:hidden;background:${C.cream};box-shadow:0 1px 3px rgba(0,0,0,0.03)}
+        .town-map-toolbar{position:absolute;top:16px;right:16px;z-index:500;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:calc(100% - 32px)}
+        .town-map-toggle{display:flex;gap:6px}
+        .town-map-canvas{width:100%;height:clamp(400px,62vw,640px);min-height:400px}
+        .town-map-placeholder{width:100%;height:clamp(400px,62vw,640px);min-height:400px;background:linear-gradient(135deg,#EDEAE4 0%,#E4E0D8 100%)}
+        .town-map-unavailable{opacity:0.72}
+        .town-nearby{margin-top:32px}
+        .town-nearby-title{font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${REPORT_LABEL};margin-bottom:20px;font-weight:600}
+        .town-nearby-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+        .town-nearby-card{display:flex;gap:14px;padding:18px 20px;border:1px solid ${C.rule};border-radius:16px;background:${C.paper};transition:border-color .2s,box-shadow .2s}
+        .town-nearby-card:hover{border-color:rgba(92,107,90,.22);box-shadow:0 2px 12px rgba(0,0,0,.04)}
+        .town-nearby-icon-wrap{width:44px;height:44px;border-radius:12px;background:${C.cream};border:1px solid ${C.rule};display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .town-nearby-emoji{font-size:20px;line-height:1}
+        .town-nearby-label{font-family:${MONO};font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:${C.faint};margin-bottom:5px;font-weight:500}
+        .town-nearby-name{font-family:${DISPLAY};font-size:16px;line-height:1.3;color:${C.ink};font-weight:500;letter-spacing:-.015em}
+        .town-nearby-time{font-family:${MONO};font-size:10px;letter-spacing:.06em;color:${C.soft};margin-top:7px}
+        .town-nearby-card-skeleton{background:${C.cream}}
+        .town-nearby-skel-icon{width:44px;height:44px;border-radius:12px;background:rgba(0,0,0,.05);flex-shrink:0}
+        .town-nearby-skel-lines{flex:1;display:flex;flex-direction:column;gap:8px;padding-top:4px}
+        .town-nearby-skel-line{height:10px;border-radius:4px;background:rgba(0,0,0,.05);width:80%}
+        .town-nearby-skel-line.short{width:45%}
+        .edu-section{margin:0 0 48px;padding:0 0 48px;border-bottom:1px solid ${C.rule}}
+        .edu-section-head{margin-bottom:24px}
+        .edu-summary{font-family:${DISPLAY};font-size:clamp(17px,2.1vw,21px);line-height:1.5;color:${C.ink};margin:10px 0 0;font-weight:500;letter-spacing:-.02em;max-width:720px}
+        .edu-block{margin-bottom:32px}
+        .edu-block:last-child{margin-bottom:0}
+        .edu-block-title{font-family:${MONO};font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:${REPORT_LABEL};margin-bottom:14px;font-weight:600}
+        .edu-district-card,.edu-private-card,.edu-featured-card,.edu-higher-card{border:1px solid ${C.rule};border-radius:16px;padding:22px 24px;background:${C.paper}}
+        .edu-district-name,.edu-school-name{font-family:${DISPLAY};font-size:19px;line-height:1.3;color:${C.ink};font-weight:500;letter-spacing:-.015em;margin:0 0 8px}
+        .edu-school-meta{font-family:${MONO};font-size:10px;letter-spacing:.06em;color:${C.soft};line-height:1.5;margin:0}
+        .edu-school-desc{font-size:14px;line-height:1.6;color:${C.soft};margin:12px 0 0;max-width:520px}
+        .edu-dot{margin:0 6px;opacity:0.5}
+        .edu-featured-grid,.edu-higher-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+        .edu-district-stats{display:flex;flex-wrap:wrap;gap:20px 28px;margin-top:16px;padding-top:16px;border-top:1px solid ${C.rule}}
+        .edu-district-stat{display:flex;flex-direction:column;gap:4px}
+        .edu-district-stat-label{font-family:${MONO};font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:${C.faint};font-weight:500}
+        .edu-district-stat-value{font-family:${DISPLAY};font-size:17px;color:${C.ink};letter-spacing:-.01em}
+        .edu-private-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+        .edu-skeleton{padding:8px 0}
+        .edu-skel-line{height:12px;border-radius:4px;background:rgba(0,0,0,.05);margin-bottom:16px}
+        .edu-skel-line.wide{width:70%}
+        .edu-skel-block{height:88px;border-radius:14px;background:rgba(0,0,0,.05);margin-bottom:12px}
+        .edu-skel-block.short{height:56px;width:85%}
         .footer-card{margin-top:40px;background:${C.ink};color:#fff;border-radius:20px;padding:32px}
         .footer-list{list-style:none;padding:0;margin:16px 0 0}
         .footer-list li{display:flex;gap:14px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:12px;font-size:15px}
@@ -694,6 +742,10 @@ export default function WhereNext({ section = "home" }) {
           .scout-fact:nth-child(2n){border-right:0}
           .scout-fact:nth-last-child(-n+3){border-bottom:1px solid ${C.rule}}
           .scout-fact:nth-last-child(-n+2){border-bottom:0}
+          .town-nearby-grid{grid-template-columns:repeat(2,1fr)}
+          .town-map-canvas,.town-map-placeholder{height:clamp(360px,58vw,560px);min-height:360px}
+          .edu-private-grid{grid-template-columns:repeat(2,1fr)}
+          .edu-featured-grid,.edu-higher-grid{grid-template-columns:repeat(2,1fr)}
         }
         @media(max-width:760px){
           .page{padding-left:16px;padding-right:16px}
@@ -747,10 +799,18 @@ export default function WhereNext({ section = "home" }) {
           .facts-strip-item:last-child{border-bottom:0}
           .fit-summary{grid-template-columns:1fr}
           .similar-grid{grid-template-columns:1fr}
-          .scout-cover-body{padding:32px 20px 40px}
+          .scout-cover{margin-top:-14px;margin-bottom:48px}
+          .scout-cover-bleed{min-height:min(72vh,620px)}
+          .scout-cover-body{padding:28px 20px 72px}
           .scout-grid{grid-template-columns:1fr;gap:44px}
           .scout-card{padding-top:28px}
-          .scout-masthead{padding:40px 0 32px}
+          .scout-masthead{padding:12px 0 0}
+          .scout-masthead-brand{margin:14px 0 6px}
+          .scout-masthead-tagline{margin-bottom:8px}
+          .town-nearby-grid{grid-template-columns:1fr}
+          .town-map-canvas,.town-map-placeholder{min-height:320px;height:clamp(320px,55vh,440px)}
+          .edu-private-grid{grid-template-columns:1fr}
+          .edu-featured-grid,.edu-higher-grid{grid-template-columns:1fr}
           .town-summary,.expanded{padding-left:20px;padding-right:20px}
           .budget-row{flex-wrap:wrap}
         }
@@ -1897,7 +1957,6 @@ function ScoutMasthead({ weekLabel, issue }) {
         <span className="scout-masthead-dot">·</span>
         <span>Issue No. {issue}</span>
       </div>
-      <div className="scout-masthead-rule" style={{ marginTop: 32 }} />
     </header>
   );
 }
@@ -2293,6 +2352,8 @@ function Card({
             </div>
             <ScoutScorecard t={t} budget={budget} />
           </section>
+
+          <TownExploreEducation town={t} stateAbbr={st} />
 
           <TownFactsStrip t={t} stage={stage} over={over} />
 
