@@ -11,6 +11,7 @@ import { getTownFactsDisplay } from "@/lib/townFacts";
 import { SiteNavHero, SubpageShell } from "@/components/SiteNav";
 import { resolveNavActive } from "@/lib/siteNav";
 import TownExploreEducation from "@/components/TownExploreEducation";
+import ScoutScoreClimateRow from "@/components/ScoutScoreClimateRow";
 
 const KEY = "where-next:v7";
 
@@ -552,10 +553,56 @@ export default function WhereNext({ section = "home" }) {
         .town-detail .article-lede{color:${REPORT_BODY}}
         .town-detail .bullets li{color:${REPORT_BODY}}
         .town-detail .report-close-copy{color:${REPORT_BODY}}
-        .scout-verdict{display:flex;align-items:flex-start;justify-content:space-between;gap:32px;padding-bottom:44px;margin-bottom:44px;border-bottom:1px solid ${C.rule}}
+        .scout-verdict{padding-bottom:36px;margin-bottom:0;border-bottom:1px solid ${C.rule}}
         .scout-verdict-label{font-family:${MONO};font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${REPORT_LABEL};margin-bottom:16px;font-weight:600}
         .scout-verdict-copy{font-family:${DISPLAY};font-size:clamp(21px,2.8vw,27px);line-height:1.55;letter-spacing:-.025em;margin:0;font-weight:500;color:${C.ink};max-width:720px}
-        .scout-score-block{flex-shrink:0;text-align:left;min-width:248px;max-width:280px;padding:24px 28px;border:1px solid ${C.rule};border-radius:16px;background:${C.cream}}
+        .scout-score-section{padding:36px 0;margin:0;border-bottom:1px solid ${C.rule};display:grid;grid-template-columns:minmax(248px,320px) minmax(0,1fr);gap:32px 48px;align-items:start}
+        .scout-score-section .scout-score-block{max-width:320px;width:100%}
+        .climate-panel{border:1px solid ${C.rule};border-radius:16px;background:${C.paper};padding:28px 32px;min-width:0}
+        .climate-panel-loading{min-height:280px}
+        .climate-panel-head{margin-bottom:18px}
+        .climate-panel-label{font-family:${MONO};font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${REPORT_LABEL};font-weight:600;margin-bottom:0}
+        .climate-snapshot{font-family:${DISPLAY};font-size:clamp(16px,1.85vw,18px);line-height:1.58;color:${C.ink};font-weight:500;letter-spacing:-.018em;margin:0 0 28px;max-width:640px}
+        .climate-panel-note{font-size:12px;line-height:1.5;color:${C.faint};margin:0}
+        .climate-chart-wrap{margin-bottom:24px}
+        .climate-chart{width:100%;height:auto;display:block}
+        .climate-chart-grid{stroke:${C.rule};stroke-width:1}
+        .climate-chart-axis{font-family:${MONO};font-size:9px;fill:${C.faint}}
+        .climate-chart-month{font-family:${MONO};font-size:8px;fill:${C.soft};letter-spacing:.02em}
+        .climate-chart-line{stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+        .climate-chart-high{stroke:${C.ink};opacity:.75}
+        .climate-chart-low{stroke:${C.sage};opacity:.65}
+        .climate-chart-dot-high{fill:${C.ink};opacity:.7}
+        .climate-chart-dot-low{fill:${C.sage};opacity:.6}
+        .climate-chart-legend{display:flex;gap:18px;margin-top:10px;font-family:${MONO};font-size:9px;letter-spacing:.06em;color:${C.soft};text-transform:uppercase}
+        .climate-legend-swatch{display:inline-block;width:14px;height:2px;border-radius:1px;margin-right:6px;vertical-align:middle}
+        .climate-legend-swatch.high{background:${C.ink};opacity:.75}
+        .climate-legend-swatch.low{background:${C.sage};opacity:.65}
+        .climate-highlights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid ${C.rule}}
+        .climate-highlight{display:flex;align-items:flex-start;gap:10px;font-size:13px;line-height:1.45;color:${REPORT_BODY}}
+        .climate-highlight-icon{font-size:15px;line-height:1.2;flex-shrink:0;opacity:.88}
+        .climate-stats{display:flex;flex-wrap:wrap;gap:0;margin-bottom:24px;border:1px solid ${C.rule};border-radius:12px;overflow:hidden;background:${C.cream}}
+        .climate-stat{flex:1 1 120px;padding:16px 18px;border-right:1px solid ${C.rule};min-width:100px}
+        .climate-stat:last-child{border-right:0}
+        .climate-stat-label{font-family:${MONO};font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:${C.faint};margin-bottom:6px;font-weight:500}
+        .climate-stat-value{font-family:${DISPLAY};font-size:16px;line-height:1.25;color:${C.ink};font-weight:500;letter-spacing:-.015em}
+        .climate-card{border:1px solid ${C.rule};border-radius:12px;padding:18px 20px;background:${C.cream};margin-bottom:24px}
+        .climate-card-label{font-family:${MONO};font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:${REPORT_LABEL};font-weight:600;margin-bottom:8px}
+        .climate-card-value{font-family:${DISPLAY};font-size:18px;line-height:1.35;color:${C.ink};font-weight:500;letter-spacing:-.02em}
+        .climate-card-copy{font-size:13px;line-height:1.55;color:${C.soft};margin:10px 0 0}
+        .climate-subsection{margin-bottom:20px}
+        .climate-subsection:last-child{margin-bottom:0}
+        .climate-subsection-label{font-family:${MONO};font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:${REPORT_LABEL};font-weight:600;margin-bottom:12px}
+        .climate-list{margin:0;padding:0;list-style:none}
+        .climate-list li{position:relative;padding-left:16px;font-size:14px;line-height:1.6;color:${REPORT_BODY};margin-bottom:8px}
+        .climate-list li:last-child{margin-bottom:0}
+        .climate-list li::before{content:"";position:absolute;left:0;top:.65em;width:4px;height:4px;border-radius:50%;background:${C.sage};opacity:.55}
+        .climate-list-warn li::before{background:${C.amber};opacity:.5}
+        .climate-skel-title{height:12px;width:140px;border-radius:4px;background:rgba(0,0,0,.05);margin-bottom:12px}
+        .climate-skel-snapshot{height:48px;border-radius:8px;background:rgba(0,0,0,.04);margin-bottom:20px}
+        .climate-skel-chart{height:160px;border-radius:12px;background:rgba(0,0,0,.04);margin-bottom:20px}
+        .climate-skel-row{height:48px;border-radius:10px;background:rgba(0,0,0,.04)}
+        .scout-score-block{text-align:left;min-width:248px;max-width:280px;padding:24px 28px;border:1px solid ${C.rule};border-radius:16px;background:${C.cream}}
         .scout-score-header{text-align:center;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid ${C.rule}}
         .scout-score-label{font-family:${MONO};font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:${REPORT_LABEL};font-weight:600}
         .scout-score-num{font-family:${DISPLAY};font-size:48px;line-height:1;font-weight:600;letter-spacing:-.04em;color:${C.ink};margin:10px 0 6px}
@@ -793,7 +840,12 @@ export default function WhereNext({ section = "home" }) {
           .town-overlay{padding:24px 20px}
           .town-overlay-detail{padding:28px 20px 32px}
           .town-detail{padding:28px 20px 36px}
-          .scout-verdict{flex-direction:column;gap:24px}
+          .scout-score-section{grid-template-columns:1fr;gap:28px}
+          .scout-score-section .scout-score-block{max-width:none}
+          .climate-panel{padding:22px 20px}
+          .climate-highlights{grid-template-columns:1fr}
+          .climate-stat{flex:1 1 100%;border-right:0;border-bottom:1px solid ${C.rule}}
+          .climate-stat:last-child{border-bottom:0}
           .fit-editorial{grid-template-columns:1fr;gap:36px}
           .facts-strip-item{flex:1 1 100%;border-right:0;border-bottom:1px solid ${C.rule};padding:16px 0}
           .facts-strip-item:last-child{border-bottom:0}
@@ -2346,12 +2398,11 @@ function Card({
           </button>
 
           <section className="scout-verdict">
-            <div>
-              <div className="scout-verdict-label">Scout Verdict</div>
-              <p className="scout-verdict-copy">{scoutVerdictText(t, stage)}</p>
-            </div>
-            <ScoutScorecard t={t} budget={budget} />
+            <div className="scout-verdict-label">Scout Verdict</div>
+            <p className="scout-verdict-copy">{scoutVerdictText(t, stage)}</p>
           </section>
+
+          <ScoutScoreClimateRow town={t} stateAbbr={st} budget={budget} Scorecard={ScoutScorecard} />
 
           <TownExploreEducation town={t} stateAbbr={st} />
 
