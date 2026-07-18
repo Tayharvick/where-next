@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { STATES, FINDS, US } from "@/lib/data";
 import { getStateListingsUrl } from "@/lib/stateListings";
 import { getStateProfile, getResearchedTownsForState, STATE_QUICK_FACT_LABELS } from "@/lib/stateProfiles";
 import { getFindProfile, FIND_QUICK_FACT_LABELS } from "@/lib/findProfiles";
 import { HERO_IMAGE, getTownImageChain, getTownImageFallback, isModernHeroPhoto, isValidImageUrl, US_FALLBACK_IMAGE } from "@/lib/images";
 import { getTownFactsDisplay } from "@/lib/townFacts";
+import { SiteNavHero, SubpageShell } from "@/components/SiteNav";
+import { resolveNavActive } from "@/lib/siteNav";
 
 const KEY = "where-next:v7";
 
@@ -155,8 +158,10 @@ const STATE_LIST = Object.entries(US)
   .map(([abbr, name]) => ({ abbr, name }))
   .sort((a, b) => a.name.localeCompare(b.name));
 
-export default function WhereNext() {
-  const [tab, setTab] = useState("search");
+export default function WhereNext({ section = "home" }) {
+  const sectionTab = section === "finds" ? "find" : section === "states" ? "states" : "search";
+  const isHomeSection = section === "home";
+  const [tab, setTab] = useState(sectionTab);
   const [budget, setBudget] = useState(400000);
   const [wts, setWts] = useState({});
   const [marks, setMarks] = useState({});
@@ -170,6 +175,14 @@ export default function WhereNext() {
   const [err, setErr] = useState("");
   const [ready, setReady] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    setTab(sectionTab);
+    setOpen(null);
+    setBrowseState(null);
+  }, [sectionTab]);
 
   useEffect(() => {
     try {
@@ -210,6 +223,7 @@ export default function WhereNext() {
   const isSearch = tab === "search";
   const isFind = tab === "find";
   const isStates = tab === "states";
+  const navActive = resolveNavActive(pathname || "/");
   const S = isSearch ? search : null;
   const key = "__search";
 
@@ -236,10 +250,12 @@ export default function WhereNext() {
   };
 
   const go = (t) => {
-    setTab(t);
     setOpen(null);
     setBrowseState(null);
     setErr("");
+    if (t === "find") router.push("/hidden-finds");
+    else if (t === "states") router.push("/explore-by-state");
+    else router.push("/");
   };
 
   const ask = async (body, label) => {
@@ -382,6 +398,7 @@ export default function WhereNext() {
         .brand{font-family:${DISPLAY};font-size:15px;font-weight:500;letter-spacing:.22em;text-transform:uppercase;color:#fff;text-shadow:0 1px 14px rgba(0,0,0,.35)}
         .brand-sub{font-family:${BODY};font-size:12px;letter-spacing:.04em;color:rgba(255,255,255,.72);font-weight:400}
         .nav-links{display:flex;gap:32px;align-items:center;padding-top:2px}
+        .nav-link,.nav-link:visited{text-decoration:none;display:inline-block}
         .nav-link{background:transparent;border:0;color:rgba(255,255,255,.78);cursor:pointer;font-size:13px;padding:6px 0;font-weight:500;letter-spacing:.02em;transition:color .2s;text-shadow:0 1px 12px rgba(0,0,0,.35)}
         .nav-link:hover{color:#fff}
         .nav-link[data-on="1"]{color:#fff;border-bottom:1px solid rgba(255,255,255,.7)}
@@ -746,6 +763,7 @@ export default function WhereNext() {
         }
       `}</style>
 
+      {isHomeSection && (
       <section className="hero-wrap">
         <div className="page">
           <nav className="nav">
@@ -753,10 +771,7 @@ export default function WhereNext() {
               <div className="brand">Where Next</div>
               <div className="brand-sub">A Relocation Scout</div>
             </div>
-            <div className="nav-links">
-              <button className="nav-link" data-on={isSearch ? "1" : "0"} onClick={() => go("search")}>Your Search</button>
-              <button className="nav-link" data-on={isFind ? "1" : "0"} onClick={() => go("find")}>Hidden Finds</button>
-            </div>
+            <SiteNavHero activeKey={navActive} />
           </nav>
 
           <div className="hero-content">
@@ -814,8 +829,9 @@ export default function WhereNext() {
           </div>
         </div>
       </section>
+      )}
 
-      {isSearch && !search && !busy && (
+      {isSearch && !search && !busy && isHomeSection && (
         <div className="page landing">
           <section className="home-section intro">
             <div className="section-eyebrow">Why Where Next</div>
@@ -863,6 +879,7 @@ export default function WhereNext() {
         </div>
       )}
 
+      {isHomeSection ? (
       <main className="page content">
         {isSearch && S && (
           <>
@@ -1081,6 +1098,226 @@ export default function WhereNext() {
           </div>
         )}
       </main>
+      ) : (
+        <SubpageShell activeKey={navActive}>
+        {isSearch && S && (
+          <>
+            <div className="intro">
+              <div>
+                <div className="eyebrow">Your relocation brief</div>
+                <h2 className="intro-title" style={{ marginTop: 12 }}>{S.blurb}</h2>
+              </div>
+            </div>
+
+            <div className="budget-card">
+              <div className="budget-row">
+                <span className="eyebrow" style={{ whiteSpace: "nowrap" }}>Your budget</span>
+                <input
+                  type="range"
+                  min="120000"
+                  max="900000"
+                  step="10000"
+                  value={budget}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setBudget(v);
+                    save({ budget: v });
+                  }}
+                />
+                <span className="budget-value">${Math.round(budget / 1000)}k</span>
+              </div>
+              <button className="tune-button" onClick={() => setTuning(!tuning)}>
+                <span className="eyebrow">What matters most</span>
+                <span>{tuning ? "Hide" : "Adjust"}</span>
+              </button>
+              {tuning && (
+                <div style={{ paddingTop: 8 }}>
+                  {[{ id: "price", label: "Under budget" }, ...(S.criteria || [])].map((k) => (
+                    <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 14 }}>
+                      <span style={{ width: 170, fontSize: 13 }}>{k.label}</span>
+                      <input type="range" min="0" max="5" value={w[k.id]} onChange={(e) => setWeight(k.id, e.target.value)} />
+                      <span style={{ fontFamily: MONO, width: 16, textAlign: "right" }}>{w[k.id]}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {ranked.map((t, i) => (
+              <Card
+                key={t.id}
+                t={t}
+                st=""
+                townKey={t.id}
+                peerTowns={ranked}
+                rank={i + 1}
+                score={t.score}
+                loadDelay={i * 600}
+                open={open === t.id}
+                toggle={() => setOpen(open === t.id ? null : t.id)}
+                onNavigate={(key) => setOpen(key)}
+                mark={mark}
+                marks={marks}
+                budget={budget}
+              />
+            ))}
+
+            <Footer notes={S.footer} live label="This search" data={S} />
+          </>
+        )}
+
+        {isFind && (
+          <>
+            <ScoutMasthead weekLabel={scoutPub.weekLabel} issue={scoutPub.issue} />
+
+            {!hiddenFinds.length ? (
+              <p className="intro-copy">No hidden finds are available yet.</p>
+            ) : openFind ? (
+              <Card
+                key={openFind.id + openFind.st}
+                t={openFind}
+                st={openFind.st}
+                townKey={openFind.id + openFind.st}
+                peerTowns={hiddenFindsFlat}
+                open
+                toggle={() => setOpen(null)}
+                onNavigate={(key) => setOpen(key)}
+                mark={mark}
+                marks={marks}
+                budget={budget}
+                findBadge={hiddenFindBadge(openFind)}
+              />
+            ) : (
+              <>
+                <ScoutCoverStory
+                  town={featuredFind}
+                  st={featuredFind.st}
+                  onOpen={() => setOpen(featuredFind.id + featuredFind.st)}
+                />
+
+                {featuredFind.why?.length > 0 && (
+                  <section className={`scout-pick${getFindProfile(featuredFind.id) ? " scout-pick-continued" : ""}`}>
+                    <div className="scout-label">Why it&apos;s this week&apos;s pick</div>
+                    <ul className="scout-pick-list">
+                      {featuredFind.why.slice(0, 5).map((item, i) => (
+                        <li key={i}>
+                          <span>—</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                <ScoutFeaturedStory town={featuredFind} />
+
+                {restFinds.length > 0 && (
+                  <>
+                    <div className="scout-section-label">More Scout Reports</div>
+                    <div className="scout-grid">
+                      {restFinds.map((t, i) => (
+                        <ScoutEditorialCard
+                          key={t.id + t.st}
+                          town={t}
+                          st={t.st}
+                          loadDelay={(i + 1) * 400}
+                          onOpen={() => setOpen(t.id + t.st)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {isStates && (
+          <>
+            {!browseState ? (
+              <StateExploreGrid
+                onSelectState={(abbr) => {
+                  setBrowseState(abbr);
+                  setOpen(null);
+                }}
+              />
+            ) : openStateTown ? (
+              <>
+                <button
+                  type="button"
+                  className="state-back"
+                  onClick={() => setOpen(null)}
+                >
+                  ← Back to {browseStateName}
+                </button>
+                <Card
+                  key={openStateTown.id + browseState}
+                  t={openStateTown}
+                  st={browseState}
+                  townKey={openStateTown.id + browseState}
+                  peerTowns={stateTowns.map((town) => ({ ...town, st: browseState }))}
+                  open
+                  toggle={() => setOpen(null)}
+                  onNavigate={(key) => setOpen(key)}
+                  mark={mark}
+                  marks={marks}
+                  budget={budget}
+                />
+              </>
+            ) : stateProfile ? (
+              <>
+                <button
+                  type="button"
+                  className="state-back"
+                  onClick={() => {
+                    setBrowseState(null);
+                    setOpen(null);
+                  }}
+                >
+                  ← Back to all states
+                </button>
+                <StateProfilePage
+                  profile={stateProfile}
+                  towns={stateTowns}
+                  listingsUrl={browseStateListingsUrl}
+                  mark={mark}
+                  marks={marks}
+                  budget={budget}
+                  onOpenTown={(key) => setOpen(key)}
+                />
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="state-back"
+                  onClick={() => {
+                    setBrowseState(null);
+                    setOpen(null);
+                  }}
+                >
+                  ← Back to all states
+                </button>
+                <p className="state-empty">State not found.</p>
+              </>
+            )}
+          </>
+        )}
+
+        {shortlist.length > 0 && (
+          <div className="shortlist">
+            <div className="eyebrow" style={{ color: "rgba(255,255,255,.5)" }}>Your shortlist</div>
+            <div className="shortlist-items">
+              {shortlist.map((t) => (
+                <span key={t.id + t.st} className="shortlist-pill">
+                  {t.name} <span style={{ color: "rgba(255,255,255,.5)", marginLeft: 5 }}>{t.priceLabel}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        </SubpageShell>
+      )}
     </div>
   );
 }
